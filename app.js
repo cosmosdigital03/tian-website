@@ -1,6 +1,17 @@
-const motionControl = document.querySelector('.motion-toggle');
-motionControl?.addEventListener('click', () => {
-  const paused = document.body.classList.toggle('motion-paused');
-  motionControl.setAttribute('aria-pressed', String(paused));
-  motionControl.textContent = paused ? 'Resume animation' : 'Pause animation';
-});
+(() => {
+  const toggle = document.querySelector('.motion-toggle');
+  if (!toggle) return;
+  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let paused = media.matches;
+  const render = () => {
+    document.documentElement.classList.toggle('motion-paused', paused);
+    toggle.setAttribute('aria-pressed', String(paused));
+    toggle.querySelector('.motion-label').textContent = paused ? 'Play motion' : 'Pause motion';
+    toggle.querySelector('.motion-icon').textContent = paused ? '▷' : 'Ⅱ';
+  };
+  document.documentElement.classList.add('motion-ready');
+  toggle.hidden = false;
+  render();
+  toggle.addEventListener('click', () => { paused = !paused; render(); });
+  media.addEventListener('change', () => { paused = media.matches; render(); });
+})();
