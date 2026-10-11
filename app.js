@@ -7,47 +7,47 @@
       description: 'Your iPhone starts the connection. Traffic follows the entry-to-exit route illustrated above before continuing to the internet.',
       sees: 'The apps and websites you choose to use.',
       separate: 'Your original connecting IP from the exit relay, by design.',
-      note: 'This is a connection-design illustration, not a live VPN session.'
+      note: 'Your iPhone starts both parts of the nested connection.'
     },
     entry: {
-      kicker: '01 / THE FIRST RELAY', title: 'Identity Shield',
-      description: 'Your connection enters TIAN here. This relay handles the incoming connection before passing it to the exit.',
+      kicker: '01 / THE FIRST RELAY', title: 'Identity Shield / Entry',
+      description: 'Your device connects to Entry through the outer WireGuard tunnel. Entry forwards the encrypted inner connection toward Exit.',
       sees: 'The IP address connecting to TIAN.',
       separate: 'The destination handled by the exit relay.',
-      note: 'Role separation is a design goal, not a promise of anonymity.'
+      note: 'One identity-facing role. A separate destination-facing role.'
     },
     exit: {
-      kicker: '02 / THE ONWARD CONNECTION', title: 'Destination Shield',
-      description: 'The exit relay handles the onward connection to your destination. Its role is separate from the entry relay.',
+      kicker: '02 / THE ONWARD CONNECTION', title: 'Destination Shield / Exit',
+      description: 'Exit handles the inner WireGuard connection and routes traffic onward to your destination. Entry and Exit handle distinct parts of that route.',
       sees: 'The destination needed to route your traffic.',
       separate: 'The original IP address connecting to the entry relay.',
-      note: 'Both shields belong to TIAN. This is not a claim of independent operators.'
+      note: 'Nested tunnels give Entry and Exit separate network roles.'
     },
     internet: {
       kicker: '03 / YOUR DESTINATION', title: 'The internet',
-      description: 'Your connection reaches the website or service you choose. A VPN route changes the network path, not who you sign in as.',
+      description: 'Your connection reaches the website or service you choose through Exit. The website receives the Exit IP for this network connection.',
       sees: 'The exit IP, plus information you share with the website.',
       separate: 'The original connecting IP, as intended by the VPN route.',
-      note: 'Accounts, cookies, and browser characteristics can still identify you.'
+      note: 'Your destination receives a connection from the Exit relay.'
     }
   };
   const scenarios = {
     wifi: {
-      kicker: 'A CAFÉ CONNECTION', title: 'Know your network.\nChoose your route.',
-      description: 'A VPN tunnel can protect traffic between your device and the VPN on a shared network. The local network can still see that you’re connecting to a VPN.',
-      boundary: 'Keep using HTTPS. A VPN doesn’t make a suspicious link or an unsafe website safe.',
+      kicker: 'A CAFÉ CONNECTION', title: 'Your connection.\nA private way through.',
+      description: 'TIAN encrypts the connection from your iPhone through Entry and Exit. Your browsing follows a private route instead of going directly from the shared network to its destination.',
+      boundary: 'Use HTTPS alongside your private route for protection all the way to supported websites.',
       label: 'SHARED NETWORK', icon: '<path d="M3 8a15 15 0 0 1 18 0M6 12a10 10 0 0 1 12 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r=".7"/>'
     },
     home: {
-      kicker: 'YOUR EVERYDAY CONNECTION', title: 'A familiar network.\nThe same privacy questions.',
-      description: 'A VPN changes the route between your device and the internet. Your internet provider can still see that you’re using a VPN, and TIAN still has a role in that connection.',
-      boundary: 'A VPN doesn’t sign you out of websites or remove existing cookies. Review the privacy settings of the apps you use.',
+      kicker: 'YOUR EVERYDAY CONNECTION', title: 'Your everyday route.\nLess unwanted traffic.',
+      description: 'Enabled filter lists help block connections to known advertising, tracking, and malicious domains, alongside the two-relay private route.',
+      boundary: 'Coverage varies by website and app. Optional Safari content blocking adds page-level filtering in Safari on iPhone.',
       label: 'HOME NETWORK', icon: '<path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-8h6v8"/>'
     },
     move: {
       kicker: 'BETWEEN NETWORKS', title: 'Different places.\nGood habits travel.',
-      description: 'Moving between networks can interrupt a VPN connection. Check the connection state in your app rather than assuming a private route is active.',
-      boundary: 'This illustration can’t verify your device’s connection. Use HTTPS and keep your device and apps up to date.',
+      description: 'TIAN brings the same Entry and Exit design to your iPhone’s internet connection, whether you’re at home, at a café, or on a mobile network.',
+      boundary: 'Check the app’s connection state when changing networks, and keep using HTTPS for supported websites.',
       label: 'CHANGING NETWORKS', icon: '<path d="m15 3-6 7h6l-6 11M5 4H2M5 10H2M5 16H2M19 8h3M19 14h3M19 20h3"/>'
     }
   };
