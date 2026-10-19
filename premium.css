@@ -56,6 +56,23 @@
 .details-status { margin: 0 0 20px; border-left: 2px solid #6e95b1; padding: 4px 0 4px 12px; font-size: 12px; line-height: 1.75; color: #365771; }
 .details-status:empty { display: none; }
 .connection-results { margin-top: 6px; }
+.connection-privacy { margin-bottom: 20px; padding: 24px 26px 0; border: 1px solid #c4d5e1; border-radius: 12px; background: #edf3f7; }
+.privacy-summary-heading { display: flex; align-items: flex-start; gap: 16px; }
+.privacy-symbol { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; flex: 0 0 46px; border: 1px solid #c1d4e1; border-radius: 12px; background: #e0eaf2; color: #365f7b; }
+.privacy-kicker { margin: 0 0 7px; color: #536d81; font-size: 9px; font-weight: 650; letter-spacing: .13em; line-height: 1.6; }
+.privacy-summary-heading h4 { margin: 0; color: #183e58; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; letter-spacing: -.03em; }
+.privacy-summary-heading p:last-child { margin: 10px 0 0; max-width: 840px; color: #466278; font-size: 13px; line-height: 1.8; }
+.connection-privacy[data-tone="positive"] { border-color: #aecfc5; background: #edf5f2; }
+.connection-privacy[data-tone="positive"] .privacy-symbol { border-color: #adcfc3; background: #dcece5; color: #285d50; }
+.connection-privacy[data-tone="positive"] .privacy-summary-heading h4 { color: #225346; }
+.details-card .privacy-signal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding: 23px 0; margin-top: 22px; border-top: 1px solid #c7d8e2; }
+.privacy-signal-grid>div { min-width: 0; }
+.privacy-signal-grid>div+div { border-left: 1px solid #c7d8e2; padding-left: 24px; }
+.privacy-signal-grid dd>span { color: #214760; font-size: 15px; font-weight: 600; line-height: 1.55; }
+.privacy-signal-grid dd small { max-width: 300px; }
+.privacy-method { border-top: 1px solid #c7d8e2; padding: 0; color: #49677d; font-size: 11px; line-height: 1.8; }
+.privacy-method summary { min-height: 44px; padding: 13px 0; cursor: pointer; font-weight: 550; }
+.privacy-method p { margin: 0 0 14px; max-width: 900px; }
 .connection-snapshot { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); border: 1px solid #c7d8e4; border-radius: 12px; overflow: hidden; }
 .network-summary { background: #112a3e; color: #f1f7fb; padding: 26px; min-width: 0; }
 .device-summary { background: #e7eff5; padding: 26px; min-width: 0; }
@@ -76,6 +93,7 @@
 .network-details .signal-ip { grid-column: 1 / -1; padding-bottom: 22px; border-bottom: 1px solid #385165; }
 .signal-ip dd>span { font: 500 clamp(23px, 2.7vw, 36px)/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: -.055em; color: #fff; }
 .network-details .network-metadata dd { font-size: 12px; line-height: 1.8; color: #c1d7e5; font-weight: 400; letter-spacing: 0; }
+.network-details .network-type { grid-column: 1 / -1; }
 .network-status { margin: 22px 0 0; color: #b2ccde; font-size: 11px; line-height: 1.7; padding-top: 14px; border-top: 1px solid #385165; }
 .device-identity { padding: 0 0 25px; }
 .device-identity dd>span { display: block; font-size: clamp(27px, 3vw, 40px); line-height: 1.2; letter-spacing: -.045em; color: #13364f; font-weight: 550; }
@@ -149,6 +167,15 @@
   .details-actions .button { width: 100%; font-size: 13px; }
   .details-actions { gap: 4px 20px; }
   .details-disclosure { font-size: 11px; }
+  .connection-privacy { padding: 21px 17px 0; }
+  .privacy-summary-heading { gap: 12px; }
+  .privacy-symbol { width: 36px; height: 40px; flex-basis: 36px; border-radius: 9px; }
+  .privacy-symbol svg { width: 23px; }
+  .privacy-summary-heading h4 { font-size: 23px; }
+  .privacy-summary-heading p:last-child { font-size: 12px; }
+  .details-card .privacy-signal-grid { grid-template-columns: 1fr; gap: 17px; margin-top: 20px; padding-block: 20px; }
+  .privacy-signal-grid>div+div { border-left: 0; border-top: 1px solid #c7d8e2; padding: 15px 0 0; }
+  .privacy-signal-grid dd small { max-width: none; }
   .network-summary, .device-summary { padding: 22px 17px; }
   .network-details { gap: 22px 18px; }
   .network-summary dd { font-size: 16px; }
