@@ -40,7 +40,7 @@
 .network-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; padding-block: 30px 22px; margin: 0; }
 .network-details>div+div { border-left: 1px solid #d5e0e9; padding-left: 28px; }
 .details-card dt { color: #526a7c; font-size: 12px; line-height: 1.7; margin-bottom: 8px; }
-.network-details dd { color: #657b8c; font-size: clamp(20px, 2.2vw, 28px); letter-spacing: -.03em; line-height: 1.3; margin: 0; }
+.network-details dd { color: #526a7c; font-size: clamp(20px, 2.2vw, 28px); letter-spacing: -.03em; line-height: 1.3; margin: 0; }
 .network-note { color: #526a7c; font-size: 12px; line-height: 1.7; margin-bottom: 26px; }
 .browser-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 24px; border-top: 1px solid #d5e0e9; }
 .browser-heading h3 { font-size: 20px; margin-bottom: 6px; }
