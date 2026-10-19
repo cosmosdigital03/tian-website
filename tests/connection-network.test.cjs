@@ -16,6 +16,9 @@ test('Spectrum keeps the original registry name and network owner', () => {
   assert.equal(result.providerNote, 'Listed as Charter Communications Inc');
   assert.equal(result.organization, 'Charter Communications');
   assert.equal(result.asn, 'AS33363');
+  assert.equal(result.rawProvider, 'Charter Communications Inc');
+  assert.equal(result.asnNumber, 33363);
+  assert.equal(result.networkType, 'access');
   assert.equal(result.location, 'Orlando, Florida, United States');
 });
 test('T-Mobile and Comcast Business are not confused with server or residential product claims', () => {
@@ -23,11 +26,49 @@ test('T-Mobile and Comcast Business are not confused with server or residential 
   const business = normalize(response({ connection: { isp: 'Comcast Business' } }));
   assert.equal(business.provider, 'Comcast');
   assert.match(business.providerNote, /Comcast Business/);
+  assert.equal(business.networkType, 'access');
+  assert.equal(normalize(response({ connection: { isp: 'T-Mobile USA, Inc.' } })).networkType, 'mobile');
 });
 test('Unknown ISPs and relay/cloud providers remain their reported names', () => {
-  for (const isp of ['DigitalOcean, LLC', 'iCloud Private Relay', 'Small Local ISP', 'Spectrum Data Services']) {
+  for (const isp of ['iCloud Private Relay', 'Small Local ISP', 'Spectrum Data Services', 'Amazon Consulting', 'Microsoft Corporation', 'Cloudflare, Inc.']) {
     assert.equal(normalize(response({ connection: { isp } })).provider, isp);
+    assert.equal(normalize(response({ connection: { isp } })).networkType, 'unknown');
   }
+});
+test('AWS and DigitalOcean get familiar names while preserving raw lookup names and organizations', () => {
+  for (const [isp, asn, label] of [
+    ['Amazon.com, Inc.', 14618, 'Amazon Web Services (AWS)'],
+    ['Amazon Technologies Inc.', 16509, 'Amazon Web Services (AWS)'],
+    ['DigitalOcean, LLC', 14061, 'DigitalOcean']
+  ]) {
+    const value = normalize(response({ connection: { isp, org: isp, asn } }));
+    assert.equal(value.provider, label);
+    assert.equal(value.rawProvider, isp);
+    assert.equal(value.organization, isp);
+    assert.equal(value.asnNumber, asn);
+    assert.equal(value.networkType, 'hosting');
+    assert.match(value.networkEvidence, new RegExp('AS' + asn));
+    assert.doesNotMatch(value.networkType, /vpn/i);
+  }
+});
+test('known hosting ASNs identify only the network owner when the reported name differs or is absent', () => {
+  const value = normalize(response({ connection: { isp: 'Reported customer company', org: 'Mullvad VPN', asn: 'AS14061' } }));
+  assert.equal(value.provider, 'DigitalOcean');
+  assert.equal(value.rawProvider, 'Reported customer company');
+  assert.equal(value.organization, 'Mullvad VPN');
+  const unnamed = normalize(response({ connection: { asn: 16509 } }));
+  assert.equal(unnamed.provider, 'Amazon Web Services (AWS)');
+  assert.equal(unnamed.rawProvider, '');
+  assert.equal(unnamed.hasProvider, true);
+});
+test('explicit server names work without an ASN but unknown numbers and remote VPN flags do not invent a network type', () => {
+  for (const isp of ['Amazon Web Services', 'Amazon Data Services Spain', 'AWS', 'DigitalOcean, LLC']) {
+    assert.equal(normalize(response({ connection: { isp } })).networkType, 'hosting');
+  }
+  const unknown = normalize(response({ connection: { isp: 'Unlisted operator', asn: 12345, is_vpn: true }, security: { vpn: true }, risk_score: 99 }));
+  assert.equal(unknown.networkType, 'unknown');
+  assert.equal(unknown.provider, 'Unlisted operator');
+  assert.equal(Object.hasOwn(unknown, 'is_vpn'), false);
 });
 test('Missing network data does not invent an ISP or an area', () => {
   const value = normalize({ success: true, ip: '198.51.100.42' });
@@ -36,6 +77,9 @@ test('Missing network data does not invent an ISP or an area', () => {
   assert.equal(value.hasProvider, false);
   assert.equal(value.hasLocation, false);
   assert.equal(value.asn, 'Not supplied');
+  assert.equal(value.asnNumber, null);
+  assert.equal(value.rawProvider, '');
+  assert.equal(value.networkType, 'unknown');
 });
 test('IPv6 is preserved, duplicate location components are removed, and absent ISP falls back to owner', () => {
   const value = normalize(response({

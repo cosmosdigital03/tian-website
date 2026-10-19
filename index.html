@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a1423"><title>TIAN — A more private route. Coming soon.</title><meta name="description" content="One connection. Two separate roles. Explore TIAN’s two-shield private network, in development for iPhone."><link rel="canonical" href="https://tianvpn.com/"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="premium.css?v=20261019-2"><script src="app.js" defer></script><script src="connection-device.js?v=20261019-2" defer></script><script src="connection-network.js?v=20261019-2" defer></script><script src="connection-details.js?v=20261019-2" defer></script></head><body class="premium-home">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a1423"><title>TIAN — A more private route. Coming soon.</title><meta name="description" content="One connection. Two separate roles. Explore TIAN’s two-shield private network, in development for iPhone."><link rel="canonical" href="https://tianvpn.com/"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="premium.css?v=20261019-3"><script src="app.js" defer></script><script src="connection-device.js?v=20261019-3" defer></script><script src="connection-network.js?v=20261019-3" defer></script><script src="connection-relays.js?v=20261019-3" defer></script><script src="connection-privacy.js?v=20261019-3" defer></script><script src="connection-details.js?v=20261019-3" defer></script></head><body class="premium-home">
 <a class="skip" href="#main">Skip to content</a><header class="header"><div class="wrap header-inner"><a class="brand" href="./" aria-label="TIAN home"><span class="brand-mark"><svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 6-10 6L2 9Zm-10 12 10 6 10-6M2 15l10 6 10-6"/></svg></span><span>TIAN<small>PRIVATE NETWORK</small></span></a><nav class="main-nav" aria-label="Main navigation"><a href="#connection-details">Privacy check</a><a class="compare-nav" href="#comparison">Compare</a><a href="privacy.html">Privacy</a><a href="support.html">Support</a></nav><span class="launch-status"><i aria-hidden="true"></i>Coming soon</span></div></header>
 <main id="main">
 <section class="hero wrap" aria-labelledby="hero-title"><div class="hero-copy"><p class="eyebrow"><span></span>YOUR INTERNET, RECONSIDERED</p><h1 id="hero-title">A more private<br><em>way through.</em></h1><p class="hero-lede">Two relay roles. One considered connection.<br>Meet TIAN, in development for iPhone.</p><div class="actions"><a class="button" href="#connection-details">See what you reveal <svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a><a class="text-link" href="#connection">How TIAN works <svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></a></div><p class="launch-note"><svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M10 19h4"/></svg> In development. iPhone first.</p></div>
@@ -68,16 +68,27 @@
   <div class="details-card">
     <div class="details-card-top"><span class="details-badge"><i aria-hidden="true"></i><span id="details-badge">LIVE CONNECTION CHECK</span></span><span class="details-card-label">Your current connection. Your real results.</span></div>
     <div class="details-intro">
-      <div><h3>See what you reveal.</h3><p>Take a look at the network and browser details available from this visit.</p></div>
+      <div><h3>See what you reveal.</h3><p>Your network and device details load automatically. Already using a VPN? See which privacy signals are visible.</p></div>
       <div class="details-actions">
-        <button id="details-toggle" class="button" type="button" aria-expanded="false" aria-controls="connection-results" aria-describedby="details-disclosure" hidden>Reveal my information</button>
-        <button id="details-local" class="details-secondary" type="button" aria-expanded="false" aria-controls="connection-results" hidden>Browser only</button>
+        <button id="details-toggle" class="button" type="button" aria-expanded="false" aria-controls="connection-results" aria-describedby="details-disclosure" hidden>Refresh check</button>
         <button id="details-clear" class="details-secondary" type="button" hidden>Clear results</button>
       </div>
     </div>
-    <p id="details-disclosure" class="details-disclosure">The full check contacts <a href="https://ipwhois.io/privacy" rel="noreferrer">IPWHOIS.io</a>, which receives your public IP and standard request details. Your on-screen device results stay in this page. <a href="privacy.html#connection-preview">How this check works ↗</a></p>
+    <p id="details-disclosure" class="details-disclosure">This automatic check contacts <a href="https://ipwhois.io/privacy" rel="noreferrer">IPWHOIS.io</a>, which receives your public IP and standard request details. Your on-screen device results stay in this page. <a href="privacy.html#connection-preview">How this check works ↗</a></p>
     <p id="details-status" class="details-status" role="status" aria-live="polite" aria-atomic="true"></p>
     <div id="connection-results" class="connection-results" aria-busy="false" hidden>
+      <div id="details-privacy" class="connection-privacy" data-tone="neutral" aria-labelledby="detail-privacy-label">
+        <div class="privacy-summary-heading">
+          <span class="privacy-symbol" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 2 5 3 8 3v6c0 5-4 8-8 10-4-2-8-5-8-10V6c3 0 5-1 8-3Z"/><path d="M12 8v5m0 3h.01"/></svg></span>
+          <div><p class="privacy-kicker">YOUR PRIVACY SNAPSHOT</p><h4 id="detail-privacy-label">Checking your network…</h4><p id="detail-privacy-summary">Reading the connection used for this visit.</p></div>
+        </div>
+        <dl class="privacy-signal-grid">
+          <div><dt>Network route</dt><dd><span id="detail-route">Checking…</span><small id="detail-route-note">Looking for a recognized server or privacy service</small></dd></div>
+          <div><dt>This website connection</dt><dd><span id="detail-transport">Checking…</span><small id="detail-transport-note"></small></dd></div>
+          <div><dt>Browser &amp; device clues</dt><dd><span id="detail-clues">Checking…</span><small id="detail-clues-note"></small></dd></div>
+        </dl>
+        <details class="privacy-method"><summary>What this result can confirm</summary><p id="detail-evidence">Waiting for network details.</p><p>This snapshot identifies the route used for the IP lookup. VPN encryption, DNS, leak blocking, and traffic from other apps need separate checks. An ordinary provider address can also be used by a VPN.</p></details>
+      </div>
       <div class="connection-snapshot">
         <div class="network-summary">
           <div class="signal-heading"><span class="signal-index">01</span><h4>Your network</h4><span class="signal-tag">VISIBLE IP</span></div>
@@ -87,6 +98,7 @@
             <div><dt>Estimated area</dt><dd><span id="detail-location">Not available</span><small>Approximate IP location · no GPS</small></dd></div>
             <div class="network-metadata"><dt>Network owner</dt><dd id="detail-organization">Not available</dd></div>
             <div class="network-metadata"><dt>Network ID</dt><dd id="detail-asn">Not available</dd></div>
+            <div class="network-metadata network-type"><dt>Network type</dt><dd id="detail-network-type">Not available</dd></div>
           </dl>
           <p id="details-network-status" class="network-status"></p>
         </div>
@@ -105,9 +117,9 @@
         <div><dt>Time zone</dt><dd><span id="detail-timezone">Not available</span><small>Device setting, separate from IP location</small></dd></div>
       </dl>
       <div class="details-insight"><span class="signal-index">THE PICTURE SO FAR</span><p id="details-insight"></p></div>
-      <p class="network-note">A VPN, work network, or Private Relay may change the IP and provider shown. Run the check again after changing connections. Device details are reported or estimated by the browser; exact models are not always available. This check does not determine whether a VPN is connected.</p>
+      <p class="network-note">A VPN, work network, or Private Relay may change the IP and provider shown. Use “Refresh check” after switching connections or VPN locations. The network owner (such as Amazon) can be different from your VPN brand. Device details are reported or estimated by the browser; exact models are not always available.</p>
     </div>
-    <noscript><p class="details-noscript">Enable JavaScript to run the optional connection check. No lookup runs while JavaScript is disabled.</p></noscript>
+    <noscript><p class="details-noscript">Enable JavaScript to see the automatic connection check. No lookup runs while JavaScript is disabled.</p></noscript>
     <div class="details-footnote"><p>This check creates no tracking ID and TIAN does not save the results. Website security processing is separate from the VPN service.</p><a class="text-link" href="privacy.html#connection-preview">Website privacy ↗</a></div>
   </div>
   <div class="exposure-explainer" aria-labelledby="exposure-heading">
