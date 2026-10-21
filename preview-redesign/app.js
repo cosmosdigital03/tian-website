@@ -39,7 +39,9 @@
       if (event.key === 'Escape' && !mobileNav.hidden) setMenu(false, true);
     });
     const desktop = window.matchMedia('(min-width: 641px)');
-    if (desktop.addEventListener) desktop.addEventListener('change', event => { if (event.matches) setMenu(false); });
+    const desktopChanged = event => { if (event.matches) setMenu(false); };
+    if (desktop.addEventListener) desktop.addEventListener('change', desktopChanged);
+    else if (desktop.addListener) desktop.addListener(desktopChanged);
   }
 
   const data = {
@@ -47,13 +49,13 @@
       kicker: 'THE DEVICE-FACING RELAY',
       title: 'Where you connect.\nNot where you’re going.',
       description: 'Entry handles your connecting IP and forwards the encrypted inner connection to Exit. The destination-facing work happens at the other relay.',
-      detail: '↳ Your device-to-Exit inner connection stays encrypted through Entry.'
+      detail: 'Your device-to-Exit inner connection stays encrypted through Entry.'
     },
     exit: {
       kicker: 'THE DESTINATION-FACING RELAY',
       title: 'Where you’re going.\nA separate point of view.',
       description: 'Exit handles the inner connection and routes traffic onward to your destination. It receives that connection through Entry rather than directly from your original connecting IP.',
-      detail: '↳ Websites receive the Exit IP. Accounts and cookies can still identify you.'
+      detail: 'Websites receive the Exit IP. Accounts and cookies can still identify you.'
     }
   };
   const tabs = [...document.querySelectorAll('[data-shield]')];
