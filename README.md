@@ -10,7 +10,9 @@ No build step or third-party JavaScript dependencies are required. Serve the rep
 python3 -m http.server 8000
 ```
 
-The homepage uses `premium.css` and `app.js`. Support, privacy, and error pages retain the shared `styles.css` stylesheet. Illustrations are original inline SVG and CSS; fonts are supplied by the visitor's system.
+The homepage uses `premium.css` and `app.js`. Support, privacy, and error pages retain the shared `styles.css` stylesheet. Illustrations are original inline SVG and CSS; fonts are supplied by the visitor's system. Headings use a retro-inspired system serif stack, with sans-serif body and interface text.
+
+The divided-picture animation shows distinct relay information views, not separate packet paths or payload reassembly. Both views remain inside one shared-service frame. Pause motion and reduced-motion preferences retain a clear static explanation.
 
 ## Tests
 

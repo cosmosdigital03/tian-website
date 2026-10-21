@@ -28,3 +28,40 @@
 .inline-arrow{display:inline-block;vertical-align:-2px;width:12px;height:12px;margin-left:3px}.text-link .inline-arrow{margin:0}.footer nav .inline-arrow{width:11px;height:11px}
 
 @media(max-width:640px){body:not(.js-enabled) .header-inner{height:auto;min-height:75px;flex-wrap:wrap;padding-block:22px}body:not(.js-enabled) .main-nav{display:flex;flex-wrap:wrap;width:100%;gap:17px;margin:0}body:not(.js-enabled) .nav-toggle{display:none}}
+
+/* Information edition: editorial type, a divided picture, and distinct relay views.
+   The paired pieces are a visual metaphor, never packets or parallel traffic paths. */
+:root{--display:"Iowan Old Style","Palatino Linotype","Book Antiqua",Georgia,serif;--blue:#b3d2e3}
+.hero h1,.section-heading h2,.details-heading h2,.faq h2,.privacy-promise h2,.closing h2,.feature-copy h3,.architecture-panel h3,.knowledge-card h3{font-family:var(--display);font-weight:400;letter-spacing:-.035em}
+.hero h1{font-size:clamp(56px,5.8vw,84px);line-height:1.04;letter-spacing:-.045em}
+.hero h1 em{font-style:italic;color:#bad4df;background:none;-webkit-text-fill-color:currentColor;letter-spacing:-.05em}
+.hero-lede{color:#aabac9}.hero{column-gap:32px;grid-template-columns:1fr 1fr;padding-block:78px 67px}
+.hero-visual.information-visual{width:100%;margin:0;max-width:580px;justify-self:center}
+.information-story{margin:0;position:relative}.story-topline{display:flex;justify-content:space-between;gap:12px;font:8px/1.6 var(--mono);letter-spacing:.12em;color:#87a3b8;border-bottom:1px solid #23384a;padding:0 4px 14px}
+.information-stage{height:450px;position:relative;isolation:isolate}
+.story-source-label{position:absolute;inset:20px 0 auto;text-align:center;font:italic 16px/1.5 var(--display);color:#8ca4b6}
+.service-frame{position:absolute;inset:163px 0 0;border:1px solid #294355;border-radius:15px;background:linear-gradient(160deg,#14263870,#0d1b2a30);z-index:-1}
+.service-frame>span{position:absolute;bottom:13px;left:0;right:0;text-align:center;font:7px/1.6 var(--mono);letter-spacing:.17em;color:#8ba5b6}
+.knowledge-well{position:absolute;top:181px;width:45%;height:224px;border:1px solid #304c60;border-radius:9px;background:#0b1826;box-shadow:inset 0 1px #c0dcea0a;padding:164px 12px 0;text-align:center}
+.well-entry{left:3%}.well-exit{right:3%}.well-label{position:absolute;top:145px;left:0;width:100%;font:9px/1.5 var(--mono);letter-spacing:.13em;color:#c0d3de}
+.knowledge-well p{font-size:10px;line-height:1.4;color:#d2dfe7}.knowledge-well small{display:block;font-size:9px;line-height:1.5;margin-top:7px;color:#879eaf}
+.information-piece{position:absolute;top:193px;width:40%;height:127px;z-index:2;border:1px solid #7696a9;border-radius:6px;background:#162a3b;overflow:hidden;box-shadow:0 8px 22px #0002;transform-origin:center;will-change:transform}
+.identity-piece{left:5.5%}.destination-piece{right:5.5%}
+.piece-picture{height:56px;background:#203b50;overflow:hidden}.piece-picture svg{width:100%;height:100%;display:block;object-fit:cover}.piece-copy{padding:9px 12px}.piece-copy>span{display:block;font:7px/1.4 var(--mono);letter-spacing:.1em;color:#a9c2d2}.piece-copy strong{display:block;font:19px/1.25 var(--display);font-weight:400;color:#edf4f4;margin-top:2px}.piece-copy small{display:block;color:#8fa8ba;font-size:8px;margin-top:2px}.story-divider{position:absolute;top:205px;bottom:55px;left:50%;width:1px;background:linear-gradient(transparent,#385368,transparent)}
+.story-summary{text-align:center;font:19px/1.45 var(--display);color:#d0dfe7;margin-top:19px}.story-summary em{font-weight:400;color:#8eaebe}
+.information-visual .art-caption{margin:24px 0 0;padding-top:12px;gap:8px}.information-visual .art-caption>span{font-size:7px;letter-spacing:.1em}.information-visual .illustration-note{margin:6px 0 0;font-size:9px;line-height:1.6;color:#8199ac}
+/* Resting/no-JS/reduced-motion state: each piece sits in its own labeled view. */
+.motion-enabled .identity-piece{animation:identity-view 12s cubic-bezier(.4,0,.2,1) infinite}
+.motion-enabled .destination-piece{animation:destination-view 12s cubic-bezier(.4,0,.2,1) infinite}
+.motion-enabled .service-frame{animation:service-frame 12s ease-in-out infinite}
+@keyframes identity-view{0%,15%,100%{transform:translate(11.25%,-112px)}40%,78%{transform:translate(0,0)}}
+@keyframes destination-view{0%,15%,100%{transform:translate(-11.25%,-112px)}40%,78%{transform:translate(0,0)}}
+@keyframes service-frame{0%,18%,100%{border-color:#294355;background-color:transparent}45%,78%{border-color:#628297;background-color:#142638}}
+.knowledge-comparison{display:grid;grid-template-columns:1fr 1fr;gap:25px;padding:36px;background-image:radial-gradient(#42617e30 .6px,transparent .6px);background-size:19px 19px}.knowledge-card{border:1px solid #354f63;padding:28px;border-radius:8px;background:#101f30}.knowledge-number{font:9px/1.6 var(--mono);letter-spacing:.12em;color:#9ebccd}.knowledge-card h3{font-size:29px;margin:10px 0 25px;line-height:1.2}.knowledge-card dl{margin:0}.knowledge-card dl>div{padding:13px 0;border-top:1px solid #2a4054}.knowledge-card dt{font-size:10px;color:#94abbd}.knowledge-card dd{font-size:13px;color:#d2e0e7;font-weight:400}.knowledge-card .knowledge-muted{color:#9eb1bf}.transport-caption{padding:0 36px 30px;font-size:11px;line-height:1.9;color:#94abbd;max-width:970px}.transport-caption>span{display:block;font:8px/1.6 var(--mono);letter-spacing:.13em;color:#b5cad8;margin-bottom:8px}.architecture-panel h3{font-size:31px}.feature-copy h3{font-size:28px}
+@media(max-width:1000px) and (min-width:641px){.hero{column-gap:20px}.hero h1{font-size:clamp(46px,6.2vw,63px)}.information-stage{height:450px}.piece-copy{padding-inline:8px}.piece-copy strong{font-size:17px}.piece-copy small{font-size:7px}.knowledge-well{padding-inline:7px}.knowledge-well p{font-size:9px}.story-topline{font-size:6px;gap:5px}.story-summary{font-size:17px}.information-visual .art-caption>span{font-size:6px}.motion-toggle{font-size:9px}.knowledge-comparison{padding:25px;gap:18px}.knowledge-card{padding:22px}}
+@media(max-width:640px){.hero{grid-template-columns:1fr;padding-block:47px 38px;gap:48px}.hero h1{font-size:clamp(43px,11.3vw,72px);line-height:1.07;letter-spacing:-.04em}.hero-visual.information-visual{max-width:430px}.information-stage{height:450px}.story-topline{font-size:7px}.piece-copy{padding:10px}.piece-copy strong{font-size:18px}.piece-copy small{font-size:7px}.piece-copy>span{font-size:6px}.knowledge-well{padding-inline:6px}.knowledge-well p{font-size:9px}.knowledge-well small{font-size:8px}.well-label{font-size:8px}.information-visual .illustration-note{font-size:8px}.story-summary{font-size:20px}.information-visual .art-caption{margin-top:21px}.knowledge-comparison{grid-template-columns:1fr;padding:21px;gap:16px}.knowledge-card{padding:23px}.knowledge-card h3{font-size:29px;margin-bottom:19px}.transport-caption{padding:0 23px 24px;font-size:10px}.architecture-panel h3{font-size:29px}.section-heading h2,.details-heading h2,.faq h2{font-size:37px}.feature-copy h3{font-size:29px}.closing h2{font-size:42px}}
+@media(max-width:360px){.hero h1{font-size:43px}.piece-copy strong{font-size:15px}.piece-copy small{font-size:6px}.piece-copy{padding-inline:7px}.story-topline{font-size:6px}.information-visual .art-caption>span{font-size:6px}.knowledge-well p{font-size:8px}.knowledge-well small{font-size:7px}.information-stage{height:450px}.story-summary{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.information-piece{transform:none;will-change:auto}.story-source-label{visibility:hidden}}
+
+/* Keep the meaning legible even on the smallest phone: key labels are text, not scaled SVG. */
+.knowledge-well p{font-size:12px}.knowledge-well small{font-size:9px}.well-label{font-size:10px}.information-visual .illustration-note{font-size:10px}.piece-copy small{font-size:8px}
