@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a1423"><title>Privacy — TIAN</title>
+  <meta name="description" content="Browsing privacy and information about the TIAN coming-soon website.">
+  <link rel="canonical" href="https://tianvpn.com/privacy.html">
+  <link rel="stylesheet" href="styles.css">
+</head><body>
+<a class="skip" href="#main">Skip to content</a><header class="header"><div class="wrap header-inner"><a class="brand" href="./" aria-label="TIAN home"><span class="brand-mark"><svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 6-10 6L2 9Zm-10 12 10 6 10-6M2 15l10 6 10-6"/></svg></span><span>TIAN<small>PRIVATE NETWORK</small></span></a><nav class="main-nav" aria-label="Main navigation"><a href="./#connection">The connection</a><a class="compare-nav" href="./#comparison">Compare</a><a href="privacy.html">Privacy</a><a href="support.html">Support</a></nav><span class="launch-status"><i aria-hidden="true"></i>Coming soon</span></div></header>
+<main id="main" class="prose wrap">
+<p class="eyebrow">PRIVACY, IN DETAIL</p><h1>Clear by design.</h1>
+<p class="intro">A private connection starts with a clear understanding of what happens to your information.</p>
+<p class="updated">Updated October 21, 2026</p>
+<section id="vpn-privacy" class="policy-section" aria-labelledby="vpn-title">
+<h2 id="vpn-title">Browsing privacy</h2>
+<p>TIAN’s own VPN services do not retain browsing-history, content, or DNS-query logs. This is the scope of “No browsing-history logs” on this website.</p>
+<p>Account, device, support, and essential operational records are handled separately. These can include authentication and security information, device records, support messages, and aggregate diagnostics.</p>
+<p>Service providers process information needed to deliver their services under their own policies. TIAN’s default upstream DNS resolver is Cloudflare. Its <a href="https://developers.cloudflare.com/1.1.1.1/privacy/public-dns-resolver/">public DNS resolver policy</a> describes the information it processes and retains, including limited resolver logs and sampled or aggregate data. This processing is separate from the browsing-history records covered by TIAN’s statement.</p>
+<p>TIAN uses a device-to-Exit encrypted inner connection carried through the device-facing Entry relay. Entry and Exit handle separate parts of the route. Both relays are part of TIAN. Signed-in accounts, cookies, and browser characteristics remain ways websites recognize you, and traffic analysis can still correlate activity.</p>
+<p class="inline-note">TIAN is in development. This overview is not the complete privacy policy for an app release or the VPN service. Before creating an account or using TIAN, review the privacy information supplied with that release.</p>
+</section>
+<section id="website-privacy" class="policy-section" aria-labelledby="website-title"><h2 id="website-title">Website privacy</h2>
+<p>The following information applies to this coming-soon website.</p>
+<h3>Visiting these pages</h3>
+<p>This is a static informational website. Its pages do not include advertising pixels, analytics scripts, account sign-in, payment forms, or waitlist forms. The site code does not set cookies or use browser storage. This site uses system fonts and locally included illustrations.</p>
+<p>Basic technical request information, including your IP address, browser information, and the time of access, is processed to deliver these pages and help keep them secure. Those website-request records are separate from the VPN’s browsing-history statement.</p>
+<h3 id="connection-preview">Your automatic connection check</h3>
+<p>The homepage automatically shows the public IP, network provider, network owner and ID, and approximate area associated with the connection used for the lookup. It also shows locally available device details and an explanation of any recognized VPN, relay, or server network. JavaScript must be enabled for the check to run.</p>
+<p>When the homepage loads, your browser connects directly to <a href="https://ipwhois.io/" rel="noreferrer">IPWHOIS.io</a>, which receives your public IP and the standard request information your browser sends, including browser information and the website origin. The lookup uses HTTPS without cookies, credentials, or a referring-page URL. IPWHOIS handles requests under its own <a href="https://ipwhois.io/privacy" rel="noreferrer">privacy policy</a>. Its processing and retention are separate from TIAN.</p>
+<p>Device family, a model when available, browser, operating system, screen size, language, and time zone are calculated locally when the check starts. Where supported, the browser may supply an additional device-model hint; it can also withhold or generalize these details. The website does not upload this on-screen collection of device results, create a fingerprint or tracking ID, or save the check results to cookies, browser storage, or a TIAN database.</p>
+<p>The snapshot loads automatically, without a refresh or clear button. Leaving the page clears the displayed results and cancels any pending lookup. Returning through browser history, returning to the page after switching away, or a browser-reported network change refreshes the snapshot, subject to a short cooldown and provider availability. An offline connection clears old network details and the check runs again when the browser reconnects. Not every VPN switch is detectable by a website. There is no periodic polling. Leaving the page does not remove request information already processed by a service provider.</p>
+<p>Network recognition happens in the page using the lookup’s network name and ID, a configured list of TIAN exit addresses, and a local copy of <a href="https://developer.apple.com/icloud/prepare-your-network-for-icloud-private-relay/" rel="noreferrer">Apple’s published Private Relay ranges</a>. Visitors do not contact Apple for this match. Address lists have an expiry; an expired or unmatched list does not establish that a privacy service is absent. Recognized third-party VPNs and relays receive the same positive treatment as recognized TIAN exits.</p>
+<p>A server address, including one registered to Amazon or DigitalOcean, may belong to a VPN, proxy, or another server-based connection. An ordinary internet-provider address may also be used by a VPN. These results identify the IP route and database information available to this lookup; they do not verify VPN encryption, DNS handling, leak prevention, or protection for other apps. HTTPS is shown separately for the connection to this website. The estimated area comes from the public IP, not GPS, and device identification may be approximate. The check does not collect VPN browsing history.</p>
+<h3>Contacting support</h3>
+<p>Email links open your email app. If you send a message to <a href="mailto:support@tianvpn.com">support@tianvpn.com</a>, TIAN and its email service provider receive the address, message, and attachments you send so your request can be handled.</p>
+<p>Only include information needed for your question. Do not send passwords, private keys, payment details, or browsing history.</p>
+<h3>Privacy questions</h3>
+<p>For questions or requests about information you have sent to TIAN, email <a href="mailto:support@tianvpn.com?subject=TIAN%20privacy%20question">support@tianvpn.com</a>.</p>
+</section>
+</main>
+<footer class="footer"><div class="wrap footer-inner"><div><a class="brand" href="./" aria-label="TIAN home"><span class="brand-mark"><svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 6-10 6L2 9Zm-10 12 10 6 10-6M2 15l10 6 10-6"/></svg></span>TIAN</a><p>A more private route.</p></div><nav aria-label="Footer navigation"><a href="privacy.html">Privacy</a><a href="support.html">Support</a><a href="mailto:support@tianvpn.com">support@tianvpn.com <svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></a></nav><p class="copyright">© 2026 TIAN<br>In development for iPhone.</p></div></footer>
+</body></html>
+
