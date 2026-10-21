@@ -64,7 +64,7 @@ function page(options = {}) {
     Object.defineProperty(element, 'innerHTML', { set() { throw new Error('Remote values must not become HTML'); } });
     elements.set(match[2], element);
   }
-  const requests = [], windowEvents = new Map(), timers = new Map();
+  const requests = [], windowEvents = new Map(), documentEvents = new Map(), connectionEvents = new Map(), timers = new Map();
   const sideEffects = { persistence: 0, cookies: 0, intervals: 0, beacon: 0 };
   let nextTimer = 1, browserReads = 0, modelReads = 0;
   let now = Date.parse('2026-10-19T20:00:00Z');
@@ -88,8 +88,21 @@ function page(options = {}) {
       return options.model(modelReads);
     }
   };
+  if (options.connection) navigator.connection = {
+    addEventListener(name, fn) {
+      if (!connectionEvents.has(name)) connectionEvents.set(name, []);
+      connectionEvents.get(name).push(fn);
+    }
+  };
   const location = new URL(options.url || 'https://tianvpn.com/');
-  const document = { getElementById: id => elements.get(id) || null, location };
+  const document = {
+    getElementById: id => elements.get(id) || null, location,
+    visibilityState: options.visibility || 'visible',
+    addEventListener(name, fn) {
+      if (!documentEvents.has(name)) documentEvents.set(name, []);
+      documentEvents.get(name).push(fn);
+    }
+  };
   Object.defineProperty(document, 'cookie', {
     get() { sideEffects.cookies += 1; throw new Error('No cookies'); },
     set() { sideEffects.cookies += 1; throw new Error('No cookies'); }
@@ -129,11 +142,17 @@ function page(options = {}) {
   return {
     elements, requests, timers, sideEffects,
     get: id => elements.get(id),
-    click: id => elements.get(id).click(),
     event(name, event = {}) {
       if (name === 'offline') navigator.onLine = false;
       if (name === 'online') navigator.onLine = true;
       for (const fn of windowEvents.get(name) || []) fn({ type: name, ...event });
+    },
+    visibility(state) {
+      document.visibilityState = state;
+      for (const fn of documentEvents.get('visibilitychange') || []) fn({ type: 'visibilitychange' });
+    },
+    networkChange() {
+      for (const fn of connectionEvents.get('change') || []) fn({ type: 'change' });
     },
     advance(ms) { now += ms; },
     fireTimer(id) { const timer = timers.get(id); timers.delete(id); timer.fn(); },
@@ -164,47 +183,44 @@ function assertNoPositiveRoute(p) {
   assert.doesNotMatch(p.get('detail-privacy-label').textContent, /(?:^|\s)protected(?:\s|$)|TIAN route detected/i);
 }
 
-test('Initial load shows browser details immediately and makes exactly one bounded self lookup', async () => {
+test('Startup needs no reveal, refresh, or clear controls and makes exactly one bounded automatic lookup', async () => {
   const pending = deferred();
   const p = page({ fetch: () => pending.promise });
+  assert.equal(p.get('details-toggle'), undefined);
+  assert.equal(p.get('details-clear'), undefined);
   assert.equal(p.get('details-local'), undefined);
   assert.equal(p.get('detail-device').textContent, 'iPhone');
   assert.equal(p.get('detail-os').textContent, 'iOS');
   assert.equal(p.get('connection-results').hidden, false);
   assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'true');
-  assert.equal(p.get('details-toggle').disabled, true);
   assert.equal(p.requests.length, 1);
   assertNoPositiveRoute(p);
-  p.event('pageshow', { persisted: false }); p.event('online'); p.click('details-toggle');
-  assert.equal(p.requests.length, 1, 'Initial pageshow, online, and disabled refresh cannot duplicate the lookup');
+  p.event('pageshow', { persisted: false }); p.event('online');
+  p.event('pageshow', { persisted: true });
+  assert.equal(p.requests.length, 1, 'Lifecycle events must not duplicate an active lookup');
   pending.resolve(ok(fixture)); await flush();
   assert.equal(p.get('detail-ip').textContent, fixture.ip);
   assert.equal(p.get('detail-provider').textContent, 'Spectrum (Charter)');
   assert.match(p.get('details-network-status').textContent, /^Checked /);
-  assert.equal(p.get('details-toggle').disabled, false);
-  assert.equal(p.get('details-toggle').textContent, 'Refresh check');
+  assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'false');
   assert.equal(p.timers.size, 0);
   assertNoTracking(p);
 });
 
-test('Clear aborts, removes private values, blocks lifecycle refreshes, and cannot be undone by a stale response', async () => {
+test('Reconnect supersedes pending network and model responses without restoring stale values', async () => {
   const oldFetch = deferred(), oldModel = deferred();
   const p = page({
     fetch: (_, __, number) => number === 1 ? oldFetch.promise : Promise.resolve(ok(vpnFixture)),
     model: number => number === 1 ? oldModel.promise : Promise.resolve({ model: 'SM-S928U' })
   });
-  p.click('details-clear');
+  p.event('offline');
   assert.equal(p.requests[0].config.signal.aborted, true);
-  assert.equal(p.get('connection-results').hidden, true);
-  assert.equal(p.get('detail-ip').textContent, 'Not available');
-  assert.equal(p.get('detail-device').textContent, 'Not available');
+  assert.equal(p.get('connection-results').hidden, false);
+  assert.equal(p.get('detail-ip').textContent, 'Offline');
+  assert.equal(p.get('detail-device').textContent, 'Android phone (estimated)');
   assertNoPositiveRoute(p);
-  assert.equal(p.get('details-toggle').focused, true);
   assert.equal(p.timers.size, 0);
-  p.event('offline'); p.event('online'); p.event('pagehide', { persisted: true });
-  p.event('pageshow', { persisted: true });
-  assert.equal(p.requests.length, 1, 'Explicit Clear must survive reconnect and back/forward restoration');
-  p.click('details-toggle'); await flush();
+  p.event('online'); p.event('online'); await flush();
   assert.equal(p.requests.length, 2);
   assert.equal(p.get('detail-ip').textContent, vpnFixture.ip);
   assert.equal(p.get('detail-device').textContent, 'Samsung · SM-S928U');
@@ -216,67 +232,96 @@ test('Clear aborts, removes private values, blocks lifecycle refreshes, and cann
   assertNoTracking(p);
 });
 
-test('Pagehide clears transient data; a persisted restoration refreshes only a previously displayed check', async () => {
-  const oldFetch = deferred();
-  const p = page({ fetch: (_, __, number) => number === 1 ? oldFetch.promise : Promise.resolve(ok(fixture)) });
+test('Pagehide clears transient data and aborts; back/forward restoration automatically refreshes once', async () => {
+  const oldFetch = deferred(), oldModel = deferred();
+  const p = page({
+    fetch: (_, __, number) => number === 1 ? oldFetch.promise : Promise.resolve(ok(fixture)),
+    model: number => number === 1 ? oldModel.promise : Promise.resolve({ model: 'SM-S928U' })
+  });
   p.event('pagehide', { persisted: true });
   assert.equal(p.requests[0].config.signal.aborted, true);
-  assert.equal(p.get('connection-results').hidden, true);
   assert.equal(p.get('detail-device').textContent, 'Not available');
   assert.equal(p.get('detail-ip').textContent, 'Not available');
+  assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'false');
+  assert.equal(p.timers.size, 0);
   assertNoPositiveRoute(p);
-  oldFetch.resolve(ok(tianFixture)); await flush();
-  assert.equal(p.get('connection-results').hidden, true);
+  p.event('offline'); p.event('online');
+  oldFetch.resolve(ok(tianFixture)); oldModel.resolve({ model: 'Pixel 9' }); await flush();
+  assert.equal(p.requests.length, 1, 'A suspended page must never start another lookup');
+  assert.equal(p.get('detail-ip').textContent, 'Not available');
+  assert.equal(p.get('detail-device').textContent, 'Not available');
   assertNoPositiveRoute(p);
-  p.event('pageshow', { persisted: true }); await flush();
+  p.event('pageshow', { persisted: true }); p.event('pageshow', { persisted: true }); await flush();
   assert.equal(p.requests.length, 2);
   assert.equal(p.get('connection-results').hidden, false);
   assert.equal(p.get('detail-ip').textContent, fixture.ip);
-  p.click('details-clear'); p.event('pagehide', { persisted: true }); p.event('pageshow', { persisted: true });
-  await flush();
-  assert.equal(p.requests.length, 2);
-  assert.equal(p.get('connection-results').hidden, true);
+  assert.equal(p.get('detail-device').textContent, 'Samsung · SM-S928U');
+  assertNoTracking(p);
 });
 
-test('Offline removes a previous privacy verdict while online refreshes the still-visible check once', async () => {
+test('A delayed response body cannot replace a newer restored-page snapshot', async () => {
+  const oldBody = deferred();
+  const p = page({ fetch: async (_, __, number) => number === 1
+    ? { ...ok(tianFixture), json: () => oldBody.promise } : ok(vpnFixture) });
+  await flush();
+  p.event('pagehide', { persisted: true }); p.event('pageshow', { persisted: true });
+  await flush();
+  assert.equal(p.get('detail-ip').textContent, vpnFixture.ip);
+  const currentPrivacy = privacySnapshot(p);
+  oldBody.resolve(tianFixture); await flush();
+  assert.equal(p.get('detail-ip').textContent, vpnFixture.ip);
+  assert.deepEqual(privacySnapshot(p), currentPrivacy);
+  assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'false');
+  assert.equal(p.timers.size, 0);
+});
+
+test('Offline removes a previous privacy verdict and reconnect refreshes the visible check once', async () => {
   const reconnect = deferred();
   const p = page({ fetch: (_, __, number) => number === 1 ? Promise.resolve(ok(vpnFixture)) : reconnect.promise });
   await flush();
   assert.equal(p.get('details-privacy').getAttribute('data-tone'), 'positive');
   const previousPrivacy = privacySnapshot(p);
-  p.event('offline');
+  p.event('offline'); p.event('offline');
   assert.equal(p.get('detail-ip').textContent, 'Offline');
   assert.equal(p.get('detail-device').textContent, 'iPhone');
+  assert.equal(p.get('connection-results').hidden, false);
   assertNoPositiveRoute(p);
   assert.notDeepEqual(privacySnapshot(p), previousPrivacy);
-  p.click('details-toggle');
-  assert.equal(p.requests.length, 1, 'Manual refresh while known offline must stay local');
+  assert.equal(p.requests.length, 1, 'Offline transitions must stay local');
   p.event('online'); p.event('online');
   assert.equal(p.requests.length, 2, 'Repeated online events must not race or repeat the reconnect request');
+  assert.equal(p.get('detail-ip').textContent, 'Checking…');
+  assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'true');
+  assertNoPositiveRoute(p);
   reconnect.resolve(ok(fixture)); await flush();
   assert.equal(p.get('detail-ip').textContent, fixture.ip);
   assertNoPositiveRoute(p);
 });
 
-test('An initially offline browser exposes local values without fetching and waits for online', async () => {
+test('An initially offline browser exposes local values without fetching and waits for reconnect', async () => {
   const p = page({ online: false });
   assert.equal(p.requests.length, 0);
   assert.equal(p.get('connection-results').hidden, false);
   assert.equal(p.get('detail-device').textContent, 'iPhone');
   assert.equal(p.get('detail-ip').textContent, 'Offline');
-  assert.equal(p.get('details-toggle').disabled, false);
+  assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'false');
   assertNoPositiveRoute(p);
-  p.event('pageshow', { persisted: false }); p.click('details-toggle');
+  p.event('pageshow', { persisted: false }); p.event('offline');
   assert.equal(p.requests.length, 0);
   p.event('online'); await flush();
   assert.equal(p.requests.length, 1);
   assert.equal(p.get('detail-ip').textContent, fixture.ip);
-  p.click('details-clear'); p.event('offline'); p.event('online'); await flush();
-  assert.equal(p.requests.length, 1);
-  assert.equal(p.get('connection-results').hidden, true);
+  p.event('pagehide', { persisted: true }); p.event('offline');
+  p.event('pageshow', { persisted: true }); await flush();
+  assert.equal(p.requests.length, 1, 'An offline restoration must not start a network request');
+  assert.equal(p.get('connection-results').hidden, false);
+  assert.equal(p.get('detail-ip').textContent, 'Offline');
+  p.event('online'); await flush();
+  assert.equal(p.requests.length, 2);
+  assert.equal(p.get('detail-ip').textContent, fixture.ip);
 });
 
-test('A refresh removes the previous verdict before a pending request or any failure can display it', async () => {
+test('An automatic restoration removes the previous verdict before any lookup failure can display it', async () => {
   const failures = [
     () => Promise.reject(new TypeError('Failed to fetch')),
     () => Promise.resolve(ok({ success: false, message: 'Unavailable' })),
@@ -289,16 +334,18 @@ test('A refresh removes the previous verdict before a pending request or any fai
     await flush();
     assert.equal(p.get('details-privacy').getAttribute('data-tone'), 'positive');
     const oldVerdict = privacySnapshot(p);
-    p.click('details-toggle');
+    p.event('pagehide', { persisted: true }); p.event('pageshow', { persisted: true });
     assertNoPositiveRoute(p);
     await flush();
     assert.equal(p.get('detail-ip').textContent, 'Temporarily unavailable');
     assert.equal(p.get('detail-device').textContent, 'iPhone');
-    assert.equal(p.get('details-toggle').disabled, false);
+    assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'false');
     assertNoPositiveRoute(p);
     assert.notDeepEqual(privacySnapshot(p), oldVerdict);
     assert.equal(p.requests.length, 2);
     assert.equal(p.timers.size, 0, 'Failures must not schedule retries');
+    p.event('online'); p.event('pageshow', { persisted: false }); await flush();
+    assert.equal(p.requests.length, 2, 'Unrelated lifecycle events must not retry a failed lookup');
     assertNoTracking(p);
   }
 });
@@ -313,16 +360,16 @@ test('The eight-second timeout aborts and leaves browser details available witho
   assert.equal(p.requests[0].config.signal.aborted, true);
   assert.equal(p.get('detail-ip').textContent, 'Temporarily unavailable');
   assert.equal(p.get('detail-device').textContent, 'iPhone');
-  assert.equal(p.get('details-toggle').disabled, false);
+  assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'false');
   assertNoPositiveRoute(p);
   assert.equal(p.requests.length, 1);
   assert.equal(p.timers.size, 0);
 });
 
-test('HTTP 429 honors Retry-After and permits only a requested refresh after the cooldown', async () => {
+test('HTTP 429 honors Retry-After and waits for a later lifecycle transition after cooldown', async () => {
   const p = page({ fetch: async (_, __, number) => number === 1
     ? { ok: false, status: 429, headers: { get: () => '3600' } } : ok(fixture) });
-  await flush(); p.click('details-toggle'); await flush();
+  await flush(); p.event('offline'); p.event('online'); await flush();
   assert.equal(p.requests.length, 1);
   assert.match(p.get('details-network-status').textContent, /limit/i);
   assert.equal(p.get('detail-device').textContent, 'iPhone');
@@ -330,7 +377,7 @@ test('HTTP 429 honors Retry-After and permits only a requested refresh after the
   assert.equal(p.timers.size, 0);
   p.advance(3600001); await flush();
   assert.equal(p.requests.length, 1, 'Cooldown expiration itself must not send a request');
-  p.click('details-toggle'); await flush();
+  p.event('offline'); p.event('online'); await flush();
   assert.equal(p.requests.length, 2);
   assert.equal(p.get('detail-ip').textContent, fixture.ip);
   assertNoTracking(p);
@@ -341,7 +388,7 @@ test('Unavailable AbortController and refused model hints fail gracefully on aut
   await flush();
   assert.equal(p.requests.length, 0);
   assert.equal(p.get('detail-ip').textContent, 'Temporarily unavailable');
-  assert.equal(p.get('details-toggle').disabled, false);
+  assert.equal(p.get('connection-results').getAttribute('aria-busy'), 'false');
   assert.notEqual(p.get('detail-device').textContent, 'Not available');
   assertNoPositiveRoute(p);
   assertNoTracking(p);
@@ -392,4 +439,134 @@ test('HTTPS describes the website connection independently of the VPN verdict', 
   assert.equal(insecureVpn.get('details-privacy').getAttribute('data-tone'), 'positive');
   assert.notEqual(insecureVpn.get('detail-transport').textContent, secureVpn.get('detail-transport').textContent);
   assert.match(insecureVpn.get('detail-transport').textContent, /HTTP|not encrypted|unencrypted/i);
+});
+
+test('Returning to visible refreshes after 30 seconds, while focus and duplicate visibility events do not', async () => {
+  const refresh = deferred();
+  const p = page({ fetch: (_, __, number) => number === 1 ? Promise.resolve(ok(fixture)) : refresh.promise });
+  await flush();
+  p.advance(29999); p.visibility('hidden'); p.visibility('visible');
+  assert.equal(p.requests.length, 1);
+  assert.equal(p.timers.size, 0, 'A quick tab switch does not queue a lookup');
+  p.advance(1); p.event('focus'); p.visibility('visible');
+  assert.equal(p.requests.length, 1, 'Focus alone and repeated visible events are not returns');
+  p.visibility('hidden'); p.visibility('visible');
+  assert.equal(p.requests.length, 2);
+  assert.equal(p.get('detail-ip').textContent, 'Checking…');
+  p.advance(30000); p.visibility('hidden'); p.visibility('visible'); p.event('focus');
+  assert.equal(p.requests.length, 2, 'Returning while a request is active cannot overlap it');
+  refresh.resolve(ok(vpnFixture)); await flush();
+  assert.equal(p.get('detail-ip').textContent, vpnFixture.ip);
+  assert.equal(p.timers.size, 0);
+  assertNoTracking(p);
+});
+
+test('Browser network changes immediately clear stale verdicts and coalesce into one cooldown refresh', async () => {
+  const refresh = deferred();
+  const p = page({ connection: true, fetch: (_, __, number) => number === 1 ? Promise.resolve(ok(vpnFixture)) : refresh.promise });
+  await flush();
+  assert.equal(p.get('details-privacy').getAttribute('data-tone'), 'positive');
+  p.advance(5000); p.networkChange();
+  assertNoPositiveRoute(p);
+  assert.equal(p.get('detail-ip').textContent, 'Awaiting update');
+  assert.match(p.get('detail-evidence').textContent, /network change/i);
+  assert.equal(p.get('detail-device').textContent, 'iPhone');
+  assert.equal(p.requests.length, 1);
+  assert.equal(p.timers.size, 1);
+  const [[id, timer]] = Array.from(p.timers.entries());
+  assert.equal(timer.delay, 25000);
+  p.advance(10000);
+  for (let n = 0; n < 20; n += 1) p.networkChange();
+  assert.equal(p.timers.size, 1);
+  assert.equal(p.timers.get(id), timer, 'Event spam cannot postpone or multiply the scheduled refresh');
+  p.advance(15000); p.fireTimer(id);
+  assert.equal(p.requests.length, 2);
+  assert.equal(p.get('detail-ip').textContent, 'Checking…');
+  assertNoPositiveRoute(p);
+  refresh.resolve(ok(fixture)); await flush();
+  assert.equal(p.get('detail-ip').textContent, fixture.ip);
+  assert.equal(p.timers.size, 0, 'A completed event-driven refresh never becomes polling');
+  assertNoTracking(p);
+});
+
+test('Network changes abort the old request before a delayed refresh and ignore old body and model values', async () => {
+  const oldBody = deferred(), oldModel = deferred();
+  const p = page({ connection: true,
+    fetch: async (_, __, number) => number === 1 ? { ...ok(tianFixture), json: () => oldBody.promise } : ok(fixture),
+    model: number => number === 1 ? oldModel.promise : Promise.resolve({ model: 'SM-S928U' })
+  });
+  await flush(); p.networkChange();
+  assert.equal(p.requests[0].config.signal.aborted, true);
+  assert.equal(p.requests.length, 1);
+  assert.equal(p.timers.size, 1, 'Only the coalesced refresh remains, not the old request timeout');
+  const [id] = p.timers.keys();
+  p.advance(30000); p.fireTimer(id); await flush();
+  assert.equal(p.requests.length, 2);
+  assert.equal(p.get('detail-ip').textContent, fixture.ip);
+  assert.equal(p.get('detail-device').textContent, 'Samsung · SM-S928U');
+  const currentPrivacy = privacySnapshot(p);
+  oldBody.resolve(tianFixture); oldModel.resolve({ model: 'Pixel 9' }); await flush();
+  assert.equal(p.get('detail-ip').textContent, fixture.ip);
+  assert.equal(p.get('detail-device').textContent, 'Samsung · SM-S928U');
+  assert.deepEqual(privacySnapshot(p), currentPrivacy);
+  assert.equal(p.timers.size, 0);
+});
+
+test('Hidden pages defer network-change work until visible and navigation cancels a queued refresh', async () => {
+  const p = page({ connection: true }); await flush();
+  p.visibility('hidden'); p.advance(30000); p.networkChange();
+  assert.equal(p.requests.length, 1);
+  assert.equal(p.timers.size, 0);
+  assert.equal(p.get('detail-ip').textContent, 'Awaiting update');
+  p.visibility('visible'); await flush();
+  assert.equal(p.requests.length, 2, 'A visible return consumes the pending network change exactly once');
+  p.networkChange();
+  assert.equal(p.timers.size, 1);
+  p.visibility('hidden');
+  assert.equal(p.timers.size, 0, 'Backgrounding cancels the one-shot refresh timer');
+  p.visibility('visible');
+  assert.equal(p.timers.size, 1, 'A pending event resumes only when visible');
+  p.event('pagehide', { persisted: true });
+  assert.equal(p.timers.size, 0, 'Navigation cancels the queued event-driven refresh');
+  p.networkChange(); p.visibility('hidden'); p.visibility('visible');
+  assert.equal(p.requests.length, 2);
+  assert.equal(p.timers.size, 0);
+  p.event('pageshow', { persisted: true }); await flush();
+  assert.equal(p.requests.length, 3);
+  assert.equal(p.get('detail-ip').textContent, fixture.ip);
+  assertNoTracking(p);
+});
+
+test('New visibility and network-change triggers honor provider rate limits without automatic failure retries', async () => {
+  const p = page({ connection: true, fetch: async (_, __, number) => number === 1
+    ? { ok: false, status: 429, headers: { get: () => '3600' } } : ok(fixture) });
+  await flush(); p.advance(30000);
+  p.visibility('hidden'); p.visibility('visible'); p.networkChange(); await flush();
+  assert.equal(p.requests.length, 1);
+  assert.equal(p.timers.size, 0);
+  assert.match(p.get('details-network-status').textContent, /limit/i);
+  assertNoPositiveRoute(p);
+  p.advance(3570000); await flush();
+  assert.equal(p.requests.length, 1, 'Rate-limit expiry itself is not an event or a retry');
+  p.networkChange(); await flush();
+  assert.equal(p.requests.length, 2);
+  assert.equal(p.get('detail-ip').textContent, fixture.ip);
+  assert.equal(p.timers.size, 0);
+  assertNoTracking(p);
+});
+
+test('A network-change refresh failure stops until another genuine lifecycle event', async () => {
+  const p = page({ connection: true, fetch: async (_, __, number) => {
+    if (number === 1) return ok(vpnFixture);
+    throw new Error('Unavailable');
+  } });
+  await flush(); p.advance(30000); p.networkChange(); await flush();
+  assert.equal(p.requests.length, 2);
+  assert.equal(p.get('detail-ip').textContent, 'Temporarily unavailable');
+  assert.equal(p.get('detail-device').textContent, 'iPhone');
+  assertNoPositiveRoute(p);
+  assert.equal(p.timers.size, 0);
+  p.advance(300000); p.event('focus'); p.visibility('visible'); await flush();
+  assert.equal(p.requests.length, 2);
+  assertNoTracking(p);
 });

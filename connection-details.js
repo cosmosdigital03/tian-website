@@ -1,16 +1,15 @@
 (() => {
   'use strict';
   const byId = id => document.getElementById(id);
-  const button = byId('details-toggle');
-  const clearButton = byId('details-clear');
   const results = byId('connection-results');
   const status = byId('details-status');
   const privacy = byId('details-privacy');
-  if (!button || !clearButton || !results || !status || !privacy ||
+  if (!results || !status || !privacy ||
       !window.TianDeviceDetection || !window.TianConnectionNetwork ||
       !window.TianConnectionPrivacy) return;
   const endpoint = 'https://ipwho.is/?fields=success,message,ip,type,country,region,city,connection.asn,connection.org,connection.isp';
   const unavailable = 'Not available';
+  const refreshCooldown = 30000;
   const valueIds = ['ip', 'provider', 'location', 'organization', 'asn', 'network-type',
     'device', 'browser', 'os', 'screen', 'language', 'timezone',
     'route', 'transport', 'clues'];
@@ -27,7 +26,11 @@
   let hasDeviceClues = false;
   let networkState = 'idle';
   let lookupBlockedUntil = 0;
-  let resumeOnPageShow = false;
+  let pageSuspended = false;
+  let lastAttemptAt = null;
+  let refreshTimer = null;
+  let pendingNetworkRefresh = false;
+  let wasHidden = safely(() => document.visibilityState === 'hidden', false);
 
   function setText(id, value) {
     const target = byId(id);
@@ -49,9 +52,7 @@
     activeTimeout = null;
   }
   function setBusy(busy) {
-    button.disabled = busy;
     results.setAttribute('aria-busy', String(busy));
-    button.textContent = busy ? 'Checking your connection…' : 'Refresh check';
   }
   function resetNetwork(message) {
     currentNetwork = null;
@@ -62,16 +63,20 @@
   }
   function renderPrivacy() {
     const loading = networkState === 'loading';
+    const stale = networkState === 'stale';
     const reading = currentPrivacy || {
       kind: 'unknown', tone: 'neutral',
       label: loading ? 'Checking your network…' : 'Network privacy not determined',
       summary: loading
         ? 'Looking for a recognized VPN, relay, or server network.'
+        : stale ? 'Your network changed. The previous snapshot is no longer current; an updated check is pending.'
         : 'The network lookup is unavailable. Your website connection and browser details can still be shown.',
       routeValue: loading ? 'Checking…' : 'Not determined',
       routeNote: loading ? 'Reading the IP used for this lookup' : 'No conclusion about your VPN',
       networkType: 'unknown',
-      evidence: loading ? 'Waiting for network details.' : 'No current IP lookup result is available.'
+      evidence: loading ? 'Waiting for network details.'
+        : stale ? 'The browser reported a network change. Previous network results have been cleared.'
+        : 'No current IP lookup result is available.'
     };
     privacy.setAttribute('data-tone', reading.tone === 'positive' ? 'positive' : 'neutral');
     privacy.setAttribute('data-kind', reading.kind);
@@ -140,12 +145,12 @@
     hasDeviceClues = hasDeviceClues || [screen, language, timezone].some(value => value !== unavailable);
     renderPrivacy();
     // Optional model hints are read automatically and remain in this page.
-    // A stale hint must never restore cleared results.
+    // A stale hint must never restore a previous page or network snapshot.
     const getModel = safely(() => uaData.getHighEntropyValues, null);
     if (typeof getModel === 'function') {
       try {
         Promise.resolve(getModel.call(uaData, ['model'])).then(hints => {
-          if (check !== sequence || results.hidden) return;
+          if (check !== sequence || pageSuspended) return;
           if (hints && typeof hints.model === 'string' && hints.model.trim()) {
             renderDevice(Object.assign({}, input, { model: hints.model }));
           }
@@ -164,16 +169,16 @@
     renderInsight();
   }
   async function runCheck() {
+    cancelScheduledRefresh();
+    pendingNetworkRefresh = false;
     const check = ++sequence;
     stopRequest();
-    resumeOnPageShow = false;
+    pageSuspended = false;
     networkState = 'loading';
     currentDevice = null;
     hasDeviceClues = false;
     resetNetwork('Checking…');
     results.hidden = false;
-    clearButton.hidden = false;
-    button.setAttribute('aria-expanded', 'true');
     setText('details-badge', 'READING YOUR CONNECTION');
     setText('details-network-status', 'Looking up the current public IP');
     setBusy(true);
@@ -186,13 +191,14 @@
       networkState = 'limited';
       resetNetwork('Temporarily unavailable');
       setText('details-badge', 'BROWSER DETAILS READY');
-      setText('details-network-status', 'The lookup provider is at its limit. Try later.');
+      setText('details-network-status', 'The lookup provider is temporarily limiting checks.');
       status.textContent = 'Browser details are ready. The network provider has asked us to wait before trying again.';
       setBusy(false);
       renderPrivacy();
       return;
     }
     status.textContent = 'Browser details are ready. Checking your public IP and privacy signals…';
+    lastAttemptAt = Date.now();
     try {
       const controller = new AbortController();
       activeController = controller;
@@ -234,10 +240,10 @@
       resetNetwork('Temporarily unavailable');
       setText('details-badge', 'BROWSER DETAILS READY');
       setText('details-network-status', error && error.limited
-        ? 'The lookup provider is at its limit. Try later.'
+        ? 'The lookup provider is temporarily limiting checks.'
         : 'Network lookup unavailable · your browser details are still shown');
       status.textContent = error && error.limited
-        ? 'Browser details are ready. The network lookup has reached its limit; please try later.'
+        ? 'Browser details are ready. The network lookup provider is temporarily limiting checks.'
         : 'Browser details are ready. The IP lookup could not complete. This does not determine VPN or protection status.';
       renderPrivacy();
       renderInsight();
@@ -248,7 +254,11 @@
       }
     }
   }
-  function clearResults(announce) {
+  function suspendCheck() {
+    // Do not keep a stale network verdict or private values in a back/forward snapshot.
+    pageSuspended = true;
+    pendingNetworkRefresh = false;
+    cancelScheduledRefresh();
     ++sequence;
     stopRequest();
     currentDevice = null;
@@ -256,43 +266,89 @@
     currentPrivacy = null;
     hasDeviceClues = false;
     networkState = 'idle';
-    results.hidden = true;
-    results.setAttribute('aria-busy', 'false');
+    setBusy(false);
     valueIds.forEach(key => setText('detail-' + key, unavailable));
     ['ip', 'provider', 'device', 'browser', 'os', 'route', 'transport', 'clues'].forEach(key => setText('detail-' + key + '-note', ''));
     ['details-insight', 'details-network-status', 'detail-privacy-label', 'detail-privacy-summary', 'detail-evidence'].forEach(id => setText(id, ''));
     privacy.setAttribute('data-tone', 'neutral');
     privacy.setAttribute('data-kind', 'unknown');
     setText('details-badge', 'CONNECTION CHECK');
-    button.disabled = false;
-    button.textContent = 'Show my information';
-    button.setAttribute('aria-expanded', 'false');
-    clearButton.hidden = true;
-    status.textContent = announce ? 'Results have been cleared from this page.' : '';
-    if (announce) {
-      resumeOnPageShow = false;
-      button.focus({ preventScroll: true });
+    status.textContent = '';
+  }
+  function cancelScheduledRefresh() {
+    if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+  function isVisible() {
+    return safely(() => document.visibilityState, 'visible') === 'visible';
+  }
+  function scheduleNetworkRefresh() {
+    if (pageSuspended || !pendingNetworkRefresh || !isVisible() || activeController) return;
+    if (safely(() => navigator.onLine, true) === false) {
+      pendingNetworkRefresh = false;
+      showOffline();
+      return;
+    }
+    const remaining = lastAttemptAt === null ? 0 : refreshCooldown - (Date.now() - lastAttemptAt);
+    if (remaining <= 0) {
+      void runCheck();
+    } else if (refreshTimer === null) {
+      // One coalesced response to a real network-change event, never periodic polling.
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        scheduleNetworkRefresh();
+      }, remaining);
     }
   }
-  button.hidden = false;
-  button.addEventListener('click', () => { void runCheck(); });
-  clearButton.addEventListener('click', () => clearResults(true));
-  window.addEventListener('pagehide', () => {
-    resumeOnPageShow = !results.hidden;
-    clearResults(false);
-  });
-  window.addEventListener('pageshow', event => {
-    if (event.persisted && resumeOnPageShow) void runCheck();
-  });
-  window.addEventListener('offline', () => {
-    if (results.hidden || networkState === 'idle') return;
+  function networkChanged() {
+    if (pageSuspended) return;
     ++sequence;
     stopRequest();
+    pendingNetworkRefresh = true;
+    networkState = 'stale';
+    resetNetwork('Awaiting update');
+    setText('details-badge', 'UPDATING YOUR CONNECTION');
+    setText('details-network-status', 'Your network changed. The snapshot will refresh automatically.');
+    status.textContent = 'Previous network details have been cleared because your network changed. Browser details remain visible.';
+    setBusy(false);
+    renderPrivacy();
+    renderInsight();
+    scheduleNetworkRefresh();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!isVisible()) {
+      wasHidden = true;
+      cancelScheduledRefresh();
+      return;
+    }
+    if (!wasHidden) return;
+    wasHidden = false;
+    if (pageSuspended) return;
+    if (pendingNetworkRefresh) {
+      scheduleNetworkRefresh();
+    } else if (!activeController && (lastAttemptAt === null || Date.now() - lastAttemptAt >= refreshCooldown)) {
+      void runCheck();
+    }
+  });
+  const connection = safely(() => navigator.connection, null);
+  if (connection && typeof connection.addEventListener === 'function') {
+    connection.addEventListener('change', networkChanged);
+  }
+  window.addEventListener('pagehide', suspendCheck);
+  window.addEventListener('pageshow', event => {
+    if (event.persisted && pageSuspended) void runCheck();
+  });
+  window.addEventListener('offline', () => {
+    if (pageSuspended || networkState === 'offline') return;
+    ++sequence;
+    stopRequest();
+    cancelScheduledRefresh();
+    pendingNetworkRefresh = false;
     showOffline();
   });
   window.addEventListener('online', () => {
-    if (!results.hidden && networkState === 'offline') void runCheck();
+    if (!pageSuspended && networkState === 'offline') void runCheck();
   });
-  // One automatic lookup on entry. No interval, background retry, or alternate provider.
+  // Automatic entry and lifecycle checks only. No interval, failure retry, or alternate provider.
   void runCheck();
 })();
