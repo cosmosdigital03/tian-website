@@ -110,3 +110,4 @@ test('Field types and oversized remote text are bounded without creating HTML', 
   assert.equal(value.asn, 'Not supplied');
   assert.equal(value.location, 'Not identified');
 });
+
