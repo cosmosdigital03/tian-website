@@ -26,6 +26,8 @@ The tests cover device/network classification, privacy recognition, automatic co
 
 ## Connection snapshot
 
+The connection snapshot presents IP, network, approximate location, device, and browser first; additional details remain available in an expandable section.
+
 The page automatically requests the current public IP and approximate network details from the existing IPWHOIS.io endpoint. Requests omit credentials and a referring-page URL, bypass the browser cache, and time out after eight seconds. Device results stay in the page; the site adds no analytics, cookies, tracking ID, or persistent result storage.
 
 There are no Refresh, Clear, or reveal controls. Browser history restoration and reconnect refresh the snapshot. Returning to a visible tab may refresh after a 30-second cooldown. Supported browser network-change events immediately clear stale network results and coalesce a new check after the cooldown. Rate limits are respected, failures do not cause retry loops, and there is no periodic polling. Not every VPN switch is detectable by a website.
