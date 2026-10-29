@@ -65,3 +65,28 @@
 
 /* Keep the meaning legible even on the smallest phone: key labels are text, not scaled SVG. */
 .knowledge-well p{font-size:12px}.knowledge-well small{font-size:9px}.well-label{font-size:10px}.information-visual .illustration-note{font-size:10px}.piece-copy small{font-size:8px}
+
+/* Align shared columns while preserving the small-screen stacked layouts. */
+@media (min-width: 1151px) {
+  .header-inner { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
+  .header-inner > .brand { justify-self: start; }
+  .main-nav { margin: 0; }
+  .launch-status { justify-self: end; }
+  .section-heading, .details-heading {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+  }
+  .section-heading > p, .details-heading > p { justify-self: start; }
+  .faq { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+  .footer-inner { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
+  .footer nav { justify-content: center; }
+  .footer .copyright { justify-self: end; }
+}
+@media (min-width: 641px) {
+  .connection-snapshot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feature-card { display: flex; flex-direction: column; }
+  .feature-copy { flex: 1; display: flex; flex-direction: column; }
+  .feature-copy small { margin-top: auto; padding-top: 18px; }
+}
+
