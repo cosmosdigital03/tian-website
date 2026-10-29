@@ -90,3 +90,15 @@
   .feature-copy small { margin-top: auto; padding-top: 18px; }
 }
 
+
+/* Put the essential footprint first; keep supporting details available on request. */
+.footprint-more{margin-top:20px;border-top:1px solid #29435a}
+.footprint-more>summary{cursor:pointer;padding:18px 0;color:#b3d5ee;font-size:13px;list-style:none}
+.footprint-more>summary::-webkit-details-marker{display:none}
+.footprint-more>summary:after{content:"+";float:right;font-size:19px;line-height:1}
+.footprint-more[open]>summary:after{content:"−"}
+.footprint-more .connection-privacy{margin-top:0}
+.footprint-extra{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:24px 0;padding:0}
+.footprint-extra small{margin-top:0}
+.footprint-more .browser-details{border-top:1px solid #243a51;border-radius:8px}
+@media(max-width:640px){.footprint-extra{grid-template-columns:1fr;gap:16px}.footprint-more>summary{font-size:13px}}
