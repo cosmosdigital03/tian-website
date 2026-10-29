@@ -29,8 +29,15 @@
     [/^AWS(?:\s|,|$)/i, 'Amazon Web Services (AWS)']
   ];
   function clean(value, max) {
-    return typeof value === 'string'
-      ? value.slice(0, max || 120).replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/g, '').trim() : '';
+    if (typeof value !== 'string') return '';
+    return value.slice(0, max || 120).replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/g, '').trim();
+  }
+  function providerText(value) {
+    const valueText = clean(value);
+    // Do not display this provider's name if a lookup returns it.
+    // A VPN-labeled result is still only a report, not verified protection.
+    if (/^NordVPN(?:,?\s+(?:Inc\.?|LLC|Ltd\.?|Limited|AB|GmbH|S\.A\.?|B\.V\.?))*$/i.test(valueText)) return 'VPN-labeled network';
+    return /nord/i.test(valueText) ? 'Network name withheld' : valueText;
   }
   function read(source, key) {
     try { return source == null ? undefined : source[key]; }
@@ -42,8 +49,8 @@
   }
   function identify(network) {
     const numeric = numberASN(read(network, 'asnNumber')) || numberASN(read(network, 'asn'));
-    const rawProvider = clean(read(network, 'rawProvider')) || clean(read(network, 'provider'));
-    const organization = clean(read(network, 'organization'));
+    const rawProvider = providerText(read(network, 'rawProvider')) || providerText(read(network, 'provider'));
+    const organization = providerText(read(network, 'organization'));
     const names = [rawProvider, organization].filter(function (name) { return name && name !== 'Not identified'; });
     const hostByASN = Object.prototype.hasOwnProperty.call(hostingASNs, numeric) ? hostingASNs[numeric] : '';
     if (hostByASN) return {
@@ -99,8 +106,8 @@
     const ip = clean(data.ip, 60);
     if (!validIP(ip)) throw new Error('Network lookup unavailable');
     const connection = data.connection && typeof data.connection === 'object' ? data.connection : {};
-    const isp = clean(connection.isp);
-    const organization = clean(connection.org);
+    const isp = providerText(connection.isp);
+    const organization = providerText(connection.org);
     const rawProvider = isp || organization;
     const asnValue = numberASN(connection.asn);
     const asn = asnValue ? 'AS' + asnValue : '';
@@ -126,3 +133,4 @@
   }
   return { normalize: normalize, identify: identify };
 });
+
