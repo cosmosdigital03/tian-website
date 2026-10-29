@@ -102,3 +102,8 @@
 .footprint-extra small{margin-top:0}
 .footprint-more .browser-details{border-top:1px solid #243a51;border-radius:8px}
 @media(max-width:640px){.footprint-extra{grid-template-columns:1fr;gap:16px}.footprint-more>summary{font-size:13px}}
+
+.solving-orb{display:inline-block;vertical-align:middle;width:40px;height:40px;margin-right:7px;background:radial-gradient(circle, #b9dcf1 1px, transparent 1.3px) center / 5px 5px;clip-path:circle(41%)}.solving-orb.orb-ready{background:none}
+
+/* TIAN emblem in the site header and footer. */
+.brand-mark{display:grid;place-items:center;flex-shrink:0}.brand-logo{display:block;width:46px;height:46px;max-width:none;object-fit:contain}.footer .brand-logo{width:40px;height:40px}
