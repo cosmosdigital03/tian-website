@@ -69,7 +69,7 @@ test('AWS and DigitalOcean alone are server evidence, never VPN proof', () => {
 
 test('explicit non-TIAN VPN names receive the same positive tone and claim limits as TIAN', () => {
   const tian = classifyAt(network('159.203.181.31', { asn: 14061 }));
-  for (const [name, label] of [['NordVPN', 'NordVPN'], ['Mullvad VPN AB', 'Mullvad VPN'], ['Proton VPN', 'Proton VPN'], ['Private Internet Access, Inc.', 'Private Internet Access'], ['Surfshark', 'Surfshark']]) {
+  for (const [name, label] of [['Mullvad VPN AB', 'Mullvad VPN'], ['Proton VPN', 'Proton VPN'], ['Private Internet Access, Inc.', 'Private Internet Access'], ['Surfshark', 'Surfshark']]) {
     const result = classifyAt(network('198.51.100.42', { isp: 'Amazon.com, Inc.', org: name, asn: 16509 }));
     assert.equal(result.kind, 'vpn');
     assert.equal(result.label, label + ' detected');
@@ -81,10 +81,32 @@ test('explicit non-TIAN VPN names receive the same positive tone and claim limit
 });
 
 test('generic hosting, reseller or parent-company names do not identify a specific VPN', () => {
-  for (const name of ['M247', 'Datacamp Limited', 'Proton AG', 'Tefincom S.A.', 'NordVPN reseller', 'VPN Services LLC', 'Apple Inc.', 'Cloudflare, Inc.', 'TIAN']) {
+  for (const name of ['M247', 'Datacamp Limited', 'Proton AG', 'Tefincom S.A.', 'VPN Services LLC', 'Apple Inc.', 'Cloudflare, Inc.', 'TIAN']) {
     const result = classifyAt(network('198.51.100.42', { isp: name }));
     assert.equal(result.kind, 'unknown', name);
     assert.equal(result.tone, 'neutral');
+  }
+});
+
+test('suppressed service lookup names are shown generically without asserting protection', () => {
+  for (const name of ['NordVPN', 'nordvpn', 'NORDVPN LLC']) {
+    const value = network('198.51.100.42', { isp: name, org: name });
+    assert.doesNotMatch(JSON.stringify(value), new RegExp(name, 'i'));
+    const result = classifyAt(value);
+    assert.equal(result.kind, 'vpn-reported');
+    assert.equal(result.tone, 'neutral');
+    assert.match(result.summary, /does not establish whether a VPN is active/);
+  }
+});
+
+test('related and reseller names are withheld without inferring VPN protection', () => {
+  for (const name of ['Nord Security', 'NORDVPN reseller', 'some Nord network']) {
+    const value = network('198.51.100.42', { isp: name, org: name });
+    assert.doesNotMatch(JSON.stringify(value), /nord/i);
+    const result = classifyAt(value);
+    assert.equal(result.kind, 'unknown');
+    assert.equal(result.tone, 'neutral');
+    assert.doesNotMatch(JSON.stringify(result), /nord/i);
   }
 });
 
@@ -100,6 +122,7 @@ test('residential/business and mobile provider evidence never becomes an unprote
 
 test('a fresh official IPv4 relay range takes precedence over a hosting owner, with correct prefix boundaries', () => {
   const options = { relayRanges: appleRanges() };
+  assert.equal(classifyAt(network('198.51.100.42', { isp: 'NordVPN' }), options).kind, 'private-relay');
   for (const ip of ['198.51.100.32', '198.51.100.42', '198.51.100.63']) {
     const result = classifyAt(network(ip, { asn: 16509 }), options);
     assert.equal(result.kind, 'private-relay');
@@ -194,3 +217,4 @@ test('browser exports use only supplied data and perform no API reads, requests 
   assert.equal(typeof context.TianConnectionPrivacy.classify, 'function');
   assert.equal(context.TianConnectionPrivacy.classify({ ip: '159.203.181.31' }, { now }).kind, 'tian');
 });
+

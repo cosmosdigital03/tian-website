@@ -17,7 +17,7 @@
   // Only explicit service names qualify. Hosting, reseller, parent-company,
   // and transit names (including M247, Datacamp, and Proton AG) do not.
   const vpnNames = [
-    [/^NordVPN$/i, 'NordVPN'], [/^Surfshark(?: VPN)?$/i, 'Surfshark'],
+    [/^Surfshark(?: VPN)?$/i, 'Surfshark'],
     [/^Mullvad(?: VPN)?$/i, 'Mullvad VPN'], [/^Proton\s?VPN$/i, 'Proton VPN'],
     [/^ExpressVPN$/i, 'ExpressVPN'], [/^Private Internet Access$/i, 'Private Internet Access'],
     [/^IVPN$/i, 'IVPN'], [/^Windscribe(?: VPN)?$/i, 'Windscribe'],
@@ -175,6 +175,12 @@
           'iCloud Private Relay exit', 'Private Relay can use a partner network. ' + ownerNote, 'Privacy relay',
           appleRange ? 'Matched Apple’s published exit ranges in the current local snapshot.' : 'The network lookup explicitly names iCloud Private Relay.', 'positive');
       }
+      if (names.some(function (name) { return name === 'VPN-labeled network'; })) {
+        return result('vpn-reported', 'VPN-labeled network reported',
+          'The lookup returned a name containing VPN. This alone does not establish whether a VPN is active or what protection it provides.',
+          'VPN-labeled network', 'This lookup does not verify encryption, DNS, or traffic from other apps. ' + ownerNote,
+          'Not determined', 'The lookup included VPN in a network name; this is not verification of a VPN connection.', 'neutral');
+      }
       for (const name of names) {
         const entry = vpnNames.find(function (item) { return item[0].test(serviceName(name)); });
         if (entry) return result('vpn', entry[1] + ' detected',
@@ -198,3 +204,4 @@
   }
   return { classify: classify };
 });
+

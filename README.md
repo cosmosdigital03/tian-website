@@ -30,6 +30,8 @@ The page automatically requests the current public IP and approximate network de
 
 There are no Refresh, Clear, or reveal controls. Browser history restoration and reconnect refresh the snapshot. Returning to a visible tab may refresh after a 30-second cooldown. Supported browser network-change events immediately clear stale network results and coalesce a new check after the cooldown. Rate limits are respected, failures do not cause retry loops, and there is no periodic polling. Not every VPN switch is detectable by a website.
 
+Provider names matching a particular competitor are withheld from the displayed connection snapshot; an exact lookup match is described neutrally and does not verify protection.
+
 See [the privacy overview](https://tianvpn.com/privacy.html#connection-preview) for processing and recognition limits.
 
 ## Publishing
