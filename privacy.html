@@ -1,26 +1,352 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0a1423"><title>Privacy — TIAN</title>
-  <meta name="description" content="Browsing privacy and information about the TIAN coming-soon website.">
-  <link rel="canonical" href="https://tianvpn.com/privacy.html">
-  <link rel="stylesheet" href="styles.css?v=20261029-3">
-</head><body>
-<a class="skip" href="#main">Skip to content</a><header class="header"><div class="wrap header-inner"><a class="brand" href="./" aria-label="TIAN home"><span class="brand-mark"><img src="assets/tian-logo.png" alt="" class="brand-logo"></span><span>TIAN<small>PRIVATE NETWORK</small></span></a><nav class="main-nav" aria-label="Main navigation"><a href="./#connection">The connection</a><a class="compare-nav" href="./#comparison">Compare</a><a href="privacy.html">Privacy</a><a href="support.html">Support</a></nav><span class="launch-status"><i aria-hidden="true"></i>Coming soon</span></div></header>
-<main id="main" class="prose wrap">
-<p class="eyebrow">PRIVACY, IN DETAIL</p><h1>Clear by design.</h1>
-<p class="intro">A private connection starts with a clear understanding of what happens to your information.</p>
-<p class="updated">Updated October 21, 2026</p>
-<section id="vpn-privacy" class="policy-section" aria-labelledby="vpn-title">
-<h2 id="vpn-title">Browsing privacy</h2>
-<p>TIAN’s own VPN services do not retain browsing-history, content, or DNS-query logs. This is the scope of “No browsing-history logs” on this website.</p>
-<p>Account, device, support, and essential operational records are handled separately. These can include authentication and security information, device records, support messages, and aggregate diagnostics.</p>
-<p>Service providers process information needed to deliver their services under their own policies. TIAN’s default upstream DNS resolver is Cloudflare. Its <a href="https://developers.cloudflare.com/1.1.1.1/privacy/public-dns-resolver/">public DNS resolver policy</a> describes the information it processes and retains, including limited resolver logs and sampled or aggregate data. This processing is separate from the browsing-history records covered by TIAN’s statement.</p>
-<p>TIAN uses a device-to-Exit encrypted inner connection carried through the device-facing Entry relay. Entry and Exit handle separate parts of the route. Both relays are part of TIAN. Signed-in accounts, cookies, and browser characteristics remain ways websites recognize you, and traffic analysis can still correlate activity.</p>
-<p class="inline-note">TIAN is in development. This overview is not the complete privacy policy for an app release or the VPN service. Before creating an account or using TIAN, review the privacy information supplied with that release.</p>
-</section>
-<section id="website-privacy" class="policy-section" aria-labelledby="website-title"><h2 id="website-title">Website privacy</h2>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Privacy Policy — TIAN</title>
+  <meta name="description" content="Privacy Policy for TIAN Private Network. Zero browsing-history logs, separated multi-path relay architecture, and transparent operational practices.">
+  <meta name="theme-color" content="#07101E">
+  <style>
+    :root {
+      --bg-primary: #07101E;
+      --bg-card: #0D192B;
+      --bg-card-alt: #112138;
+      --border-subtle: rgba(120, 165, 220, 0.16);
+      --border-highlight: rgba(110, 180, 255, 0.32);
+      --text-primary: #F3F7FC;
+      --text-secondary: #9EB0C7;
+      --text-muted: #6C809A;
+      --accent-blue: #58A6FF;
+      --accent-pill: rgba(88, 166, 255, 0.12);
+      --max-w: 820px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.65;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #0F223D 0%, var(--bg-primary) 55%);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(7, 16, 30, 0.84);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .header-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-primary);
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      font-size: 1.05rem;
+      text-decoration: none;
+    }
+
+    .brand:hover {
+      text-decoration: none;
+    }
+
+    .brand-sub {
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .policy-switcher {
+      display: inline-flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .policy-switcher a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .policy-switcher a.active {
+      background: var(--bg-card-alt);
+      color: var(--text-primary);
+      border: 1px solid var(--border-highlight);
+    }
+
+    .container {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 40px 20px 0;
+    }
+
+    .eyebrow {
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-blue);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: clamp(1.85rem, 4vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .meta-line {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-bottom: 36px;
+    }
+
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .summary-card h3 {
+      font-size: 0.92rem;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .summary-card p {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 26px 24px;
+      margin-bottom: 20px;
+      scroll-margin-top: 84px;
+    }
+
+    section h2 {
+      font-size: 1.18rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    section p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+    }
+
+    section p:last-child {
+      margin-bottom: 0;
+    }
+
+    section ul {
+      margin: 10px 0 14px 20px;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    section li {
+      margin-bottom: 8px;
+    }
+
+    section li strong,
+    section p strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .footer {
+      max-width: var(--max-w);
+      margin: 48px auto 0;
+      padding: 24px 20px 0;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://tianvpn.com" class="brand">
+        <span>T I Λ N</span>
+        <span class="brand-sub">Private Network</span>
+      </a>
+      <nav class="policy-switcher" aria-label="Legal navigation">
+        <a href="terms.html">Terms &amp; Subscriptions</a>
+        <a href="privacy.html" class="active">Privacy Policy</a>
+        <a href="terms.html#acceptable-use">Acceptable Use</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="eyebrow">PRIVACY, IN DETAIL &middot; CLEAR BY DESIGN</div>
+    <h1>Privacy Policy</h1>
+    <p class="meta-line">Effective Date: November 1, 2026 &middot; Operator: Ethear Vast LLC (Florida, United States)</p>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h3>No Browsing Logs</h3>
+        <p>TIAN never logs the websites you visit, the content of your traffic, or your DNS queries.</p>
+      </div>
+      <div class="summary-card">
+        <h3>Encrypted &amp; Divided</h3>
+        <p>Your traffic is encrypted on your device and separated across Entry and Exit relay roles.</p>
+      </div>
+      <div class="summary-card">
+        <h3>Zero Data Sales</h3>
+        <p>We never sell user data, build advertising profiles, or embed third-party ad trackers.</p>
+      </div>
+    </div>
+
+    <span id="vpn-privacy"></span>
+    <section id="controller">
+      <h2>1. Who Operates TIAN</h2>
+      <p>TIAN Private Network and <strong>tianvpn.com</strong> are operated by <strong>Ethear Vast LLC</strong>, a limited liability company organized in the State of Florida, United States ("TIAN," "we," "us," or "our"). You can reach us for privacy inquiries, data subject requests, or support at <a href="mailto:support@tianvpn.com">support@tianvpn.com</a>.</p>
+    </section>
+
+    <section id="what-we-never-log">
+      <h2>2. What We Never Log or Collect</h2>
+      <p>When you use the TIAN VPN tunnel and protected DNS resolver, our network services do <strong>not</strong> record or store:</p>
+      <ul>
+        <li>Your browsing history, visited URLs, or destination web pages.</li>
+        <li>The contents or payloads of your encrypted network traffic.</li>
+        <li>Your individual DNS queries or domain lookup histories.</li>
+        <li>Your full payment card number or card security code (all App Store and Google Play billing is handled directly by Apple or Google).</li>
+      </ul>
+    </section>
+
+    <section id="account-data">
+      <h2>3. Account, Subscription &amp; Device Information</h2>
+      <p>To authenticate your access, manage your subscription entitlement, and secure your connection, our account system processes:</p>
+      <ul>
+        <li><strong>Account &amp; Recovery Email:</strong> Your email address is stored for sign-in, verification, account recovery, and customer support. While the app displays an Account ID on your main screen for visual privacy, your email remains linked to your account in our authentication system.</li>
+        <li><strong>Device &amp; Tunnel Authorization:</strong> Device registration identifiers, public WireGuard peer keys, app version, filter preferences, domain exceptions, and account status timestamps.</li>
+        <li><strong>Subscription Entitlements:</strong> Verified transaction references, plan type, purchase environment, and expiration dates provided by Apple App Store or Google Play to confirm active paid access.</li>
+      </ul>
+    </section>
+
+    <section id="network-processing">
+      <h2>4. Network Routing &amp; Short-Term Operational Telemetry</h2>
+      <ul>
+        <li><strong>Separated Relay Roles:</strong> Your device encrypts traffic before it leaves your phone. Entry relays process transient source packet routing state in memory to forward encrypted traffic without inspecting inner destination payloads. Exit gateways decrypt the inner tunnel, resolve permitted DNS requests, apply enabled domain-blocking filters, and connect to destination websites without seeing your personal device IP.</li>
+        <li><strong>Short-Term Operational &amp; Capacity Metrics:</strong> To maintain server stability, prevent credential abuse, and monitor network health, our operational tooling records short-lived rolling metadata consisting of active session intervals, selected gateway regions, and aggregate upload/download byte volumes. <strong>This metadata never contains browsing destinations, DNS queries, packet contents, or raw private keys.</strong> Rolling device bandwidth buckets are automatically pruned within <strong>24 hours</strong>, and activity interval observations are capped at a maximum of <strong>7 days</strong>.</li>
+        <li><strong>Disconnected IP Check:</strong> When you view your connection state in the app while disconnected from the VPN, the app requests your current public IP address from an external IP-lookup endpoint so you can verify your network state.</li>
+      </ul>
+    </section>
+
+    <section id="service-providers">
+      <h2>5. Infrastructure &amp; Third-Party Service Providers</h2>
+      <p>We rely on vetted infrastructure providers strictly to deliver and secure the Service:</p>
+      <ul>
+        <li><strong>Cloud Relay Infrastructure:</strong> Vetted cloud hosting providers operate our encrypted Entry and Exit server nodes across regional data centers.</li>
+        <li><strong>Authentication &amp; Database Services:</strong> Managed backend authentication infrastructure processes sign-in sessions, access tokens, and gateway security events.</li>
+        <li><strong>Upstream Encrypted DNS (DoH):</strong> Permitted DNS queries that pass through our Exit gateway filters are forwarded over encrypted HTTPS (DNS-over-HTTPS) to an upstream resolver (such as Cloudflare) using the Exit gateway's IP address rather than your personal IP address.</li>
+        <li><strong>App Distribution &amp; Billing:</strong> Apple and Google process app installations, device integrity checks, and subscription billing under their respective platform policies.</li>
+      </ul>
+      <p>We do not sell user data, and we prohibit our infrastructure processors from using TIAN user data for their own advertising or marketing.</p>
+    </section>
+
+    <section id="website-privacy">
+      <h2>6. Website Privacy (tianvpn.com)</h2>
+      <p><strong>tianvpn.com</strong> is a static informational website. Our pages contain zero advertising pixels, third-party analytics scripts, cookies, or browser local-storage trackers. Standard web server delivery logs (such as requesting IP address, browser user-agent, and timestamp) are processed transiently to deliver pages and defend against automated attacks.</p>
+    </section>
+
+    <section id="retention-deletion">
+      <h2>7. Data Retention &amp; Account Deletion</h2>
+      <p>Account and device registration records are kept only while your account remains active. You can request permanent account deletion directly inside the TIAN app or by emailing <a href="mailto:support@tianvpn.com">support@tianvpn.com</a>.</p>
+      <p>When you delete your account, your profile, email record, and relay authorization keys are immediately revoked from our active systems, and residual encrypted database backups or security audit logs cycle out within 30 days (except where limited transaction records must be retained to comply with tax, accounting, or legal obligations).</p>
+      <p><strong>Note on App Store Subscriptions:</strong> Deleting your TIAN account does not automatically cancel an active Apple App Store or Google Play subscription. Please cancel your subscription in your device's account settings before deleting your TIAN account.</p>
+    </section>
+
+    <section id="rights-legal">
+      <h2>8. Your Privacy Rights &amp; Lawful Requests</h2>
+      <p>Depending on your location (including the EEA, UK, California, and other U.S. states), you may have the right to access, correct, export, restrict, or delete the personal account data we hold about you. To exercise your rights, contact <a href="mailto:support@tianvpn.com">support@tianvpn.com</a>.</p>
+      <p>We review legal requests carefully and disclose information only when compelled by a valid, binding court order or legal process under applicable law. <strong>Because TIAN never logs browsing histories, traffic content, or DNS queries, we cannot produce browsing records under any circumstances.</strong></p>
+    </section>
+
+    <section id="changes">
+      <h2>9. Protection Context &amp; Policy Updates</h2>
+      <p>While TIAN separates network routing roles and filters known tracking domains, signed-in accounts, browser cookies, and device-level telemetry can still identify you to websites and apps. We will post any material updates to this Privacy Policy on this page with an updated Effective Date.</p>
+      <p>Questions or privacy requests: <a href="mailto:support@tianvpn.com">support@tianvpn.com</a></p>
+    </section>
+<section id="website-details" class="policy-section" aria-labelledby="website-title"><h2 id="website-title">Website privacy</h2>
 <p>The following information applies to this coming-soon website.</p>
 <h3>Visiting these pages</h3>
 <p>This is a static informational website. Its pages do not include advertising pixels, analytics scripts, account sign-in, payment forms, or waitlist forms. The site code does not set cookies or use browser storage. This site uses system fonts and locally included illustrations.</p>
@@ -38,7 +364,17 @@
 <h3>Privacy questions</h3>
 <p>For questions or requests about information you have sent to TIAN, email <a href="mailto:support@tianvpn.com?subject=TIAN%20privacy%20question">support@tianvpn.com</a>.</p>
 </section>
-</main>
-<footer class="footer"><div class="wrap footer-inner"><div><a class="brand" href="./" aria-label="TIAN home"><span class="brand-mark"><img src="assets/tian-logo.png" alt="" class="brand-logo"></span>TIAN</a><p>A more private route.</p></div><nav aria-label="Footer navigation"><a href="privacy.html">Privacy</a><a href="support.html">Support</a><a href="mailto:support@tianvpn.com">support@tianvpn.com <svg class="icon " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></a></nav><p class="copyright">© 2026 TIAN<br>In development for iPhone.</p></div></footer>
-</body></html>
+  </main>
 
+  <footer class="footer">
+    <div>&copy; 2026 Ethear Vast LLC. TIAN Private Network.</div>
+    <div class="footer-links">
+      <a href="https://tianvpn.com">Home</a>
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="mailto:support@tianvpn.com">support@tianvpn.com</a>
+    </div>
+  </footer>
+
+</body>
+</html>

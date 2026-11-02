@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Terms of Service &amp; Acceptable Use — TIAN</title>
+  <meta name="description" content="Terms of Service, Subscription Terms, and Acceptable Use Policy for TIAN Private Network, operated by Ethear Vast LLC.">
+  <meta name="theme-color" content="#07101E">
+  <style>
+    :root {
+      --bg-primary: #07101E;
+      --bg-card: #0D192B;
+      --bg-card-alt: #112138;
+      --border-subtle: rgba(120, 165, 220, 0.16);
+      --border-highlight: rgba(110, 180, 255, 0.32);
+      --text-primary: #F3F7FC;
+      --text-secondary: #9EB0C7;
+      --text-muted: #6C809A;
+      --accent-blue: #58A6FF;
+      --accent-pill: rgba(88, 166, 255, 0.12);
+      --max-w: 820px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.65;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #0F223D 0%, var(--bg-primary) 55%);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Header & Navigation */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(7, 16, 30, 0.84);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .header-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-primary);
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      font-size: 1.05rem;
+      text-decoration: none;
+    }
+
+    .brand:hover {
+      text-decoration: none;
+    }
+
+    .brand-sub {
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* Policy Switcher Pills (Ideal for In-App WebView) */
+    .policy-switcher {
+      display: inline-flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .policy-switcher a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .policy-switcher a.active {
+      background: var(--bg-card-alt);
+      color: var(--text-primary);
+      border: 1px solid var(--border-highlight);
+    }
+
+    /* Main Container */
+    .container {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 40px 20px 0;
+    }
+
+    .eyebrow {
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-blue);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: clamp(1.85rem, 4vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .meta-line {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    /* Summary Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-bottom: 36px;
+    }
+
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .summary-card h3 {
+      font-size: 0.92rem;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .summary-card p {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Quick Jump Links */
+    .jump-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 36px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .jump-bar a {
+      font-size: 0.8rem;
+      background: var(--accent-pill);
+      color: var(--accent-blue);
+      border: 1px solid rgba(88, 166, 255, 0.24);
+      padding: 6px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+    }
+
+    /* Policy Sections */
+    section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 26px 24px;
+      margin-bottom: 20px;
+      scroll-margin-top: 84px;
+    }
+
+    section h2 {
+      font-size: 1.18rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    section p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+    }
+
+    section p:last-child {
+      margin-bottom: 0;
+    }
+
+    section ul {
+      margin: 10px 0 14px 20px;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    section li {
+      margin-bottom: 8px;
+    }
+
+    section li strong,
+    section p strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .legal-caps {
+      font-size: 0.86rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      background: rgba(7, 16, 30, 0.55);
+      border: 1px solid var(--border-subtle);
+      padding: 16px;
+      border-radius: 10px;
+    }
+
+    .footer {
+      max-width: var(--max-w);
+      margin: 48px auto 0;
+      padding: 24px 20px 0;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://tianvpn.com" class="brand">
+        <span>T I Λ N</span>
+        <span class="brand-sub">Private Network</span>
+      </a>
+      <nav class="policy-switcher" aria-label="Legal navigation">
+        <a href="terms.html" class="active">Terms &amp; Subscriptions</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="#acceptable-use">Acceptable Use</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="eyebrow">TIAN LEGAL &amp; SUBSCRIPTION TERMS</div>
+    <h1>Terms of Service</h1>
+    <p class="meta-line">Effective Date: November 1, 2026 &middot; Operator: Ethear Vast LLC (Florida, United States)</p>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h3>Transparent Subscriptions</h3>
+        <p>Monthly ($7.99/mo) and Annual ($59.99/yr) plans are billed through your App Store account and can be cancelled anytime.</p>
+      </div>
+      <div class="summary-card">
+        <h3>Passive Conduit</h3>
+        <p>TIAN encrypts and routes traffic automatically without inspecting, logging, or modifying your browsing activity.</p>
+      </div>
+      <div class="summary-card">
+        <h3>Lawful Use Only</h3>
+        <p>TIAN protects personal privacy. Network attacks, fraud, abuse, and unlawful conduct are strictly prohibited.</p>
+      </div>
+    </div>
+
+    <div class="jump-bar">
+      <a href="#subscriptions">Subscriptions &amp; Trials</a>
+      <a href="#cancellation">Cancellation &amp; Expiry</a>
+      <a href="#acceptable-use">Acceptable Use Policy</a>
+      <a href="#liability">Warranties &amp; Liability</a>
+      <a href="#disputes">Governing Law &amp; Arbitration</a>
+    </div>
+
+    <section id="agreement">
+      <h2>1. Agreement to Terms</h2>
+      <p>These Terms of Service ("Terms") govern your access to and use of the TIAN mobile applications, multi-path VPN routing services, DNS and Safari filtering features, website (<strong>tianvpn.com</strong>), and related services (collectively, the "Service" or "TIAN") provided by <strong>Ethear Vast LLC</strong>, a Florida limited liability company ("TIAN," "we," "us," or "our").</p>
+      <p>By creating an account, starting a trial, purchasing a subscription, or using the Service, you agree to be bound by these Terms, our Acceptable Use Policy (Section 5), and our <a href="privacy.html">Privacy Policy</a>. You must be at least 18 years of age (or the age of legal majority in your jurisdiction) and legally permitted to enter into a binding agreement to use TIAN.</p>
+    </section>
+
+    <section id="accounts">
+      <h2>2. Account Access &amp; Security</h2>
+      <p>To access TIAN, you must register an account using a valid email address. Your in-app Account ID is a private display identifier for your convenience; it is not a password and does not replace your underlying account credentials. You are responsible for maintaining the confidentiality of your login credentials and recovery email. TIAN support will never ask for your password, private encryption keys, or full payment card numbers.</p>
+      <p>Your subscription plan specifies the features and maximum number of active devices included with your account. Unauthorized account sharing, commercial resale, credential scraping, or automated abuse of tunnel provisioning is prohibited.</p>
+    </section>
+
+    <section id="subscriptions">
+      <h2>3. Subscriptions, Free Trials &amp; Billing</h2>
+      <ul>
+        <li><strong>Plans &amp; Pricing:</strong> TIAN offers auto-renewing subscriptions, including Monthly ($7.99 USD/month) and Annual ($59.99 USD/year) plans, or the localized price displayed on your device's purchase screen at checkout. Any monthly equivalent shown alongside an annual plan is for price comparison only; the Annual Plan is billed in full for the year.</li>
+        <li><strong>Introductory Trials:</strong> Eligible new subscribers to the Annual Plan may receive a 3-day free introductory trial, subject to platform eligibility determined by the Apple App Store or Google Play Store. <strong>Unless cancelled at least 24 hours before the trial period expires, your trial automatically converts into a paid Annual subscription</strong> billed at the full annual rate displayed at checkout.</li>
+        <li><strong>Automatic Renewal:</strong> Paid subscriptions automatically renew at the end of each billing cycle unless auto-renewal is turned off at least 24 hours prior to the end of the current period. Payment and renewal are processed directly by Apple (for App Store purchases) or Google (for Google Play purchases).</li>
+        <li><strong>Managing or Cancelling Subscriptions:</strong> You can manage or cancel auto-renewal at any time through the subscription controls in the app or directly in your Apple ID Account Settings / Google Play Subscriptions menu.</li>
+        <li><strong>Refunds:</strong> Refund requests for in-app purchases are handled directly through Apple's or Google's respective refund processes, subject to mandatory consumer laws in your jurisdiction.</li>
+      </ul>
+    </section>
+
+    <section id="cancellation">
+      <h2>4. Access When a Subscription Ends &amp; Account Deletion</h2>
+      <ul>
+        <li><strong>Continued Access Until Expiry:</strong> Turning off auto-renewal prevents future charges while leaving your paid VPN access and privacy filters active through the end of your current paid billing period. Once your paid period (and any platform billing grace period) ends without payment recovery, VPN tunnel routing and paid filters stop until a valid subscription entitlement is restored.</li>
+        <li><strong>Protection Against Silent Unprotected Fallback:</strong> If your paid access expires while you are using the app, TIAN will clearly display your inactive entitlement state so you can explicitly disconnect or renew rather than silently routing protected traffic over an unencrypted connection.</li>
+        <li><strong>Safari Content Blocker Caching:</strong> Optional iPhone Safari filtering is a paid feature. Because iOS Safari compiles content-blocking rule lists locally, previously compiled rules may briefly remain active after subscription expiry until TIAN refreshes account status or Safari reloads the extension. This platform caching delay does not create a free Safari plan or guarantee continued filtering.</li>
+        <li><strong>Account Deletion vs. Subscription Cancellation:</strong> Deleting your TIAN account inside the app permanently deletes your TIAN account profile and revokes relay keys, <strong>but does not automatically cancel an active Apple App Store or Google Play subscription</strong>. Always cancel your subscription in your device's app store settings before deleting your account to avoid future renewal charges.</li>
+        <li><strong>Complimentary &amp; Beta Access:</strong> Ethear Vast LLC may grant time-limited complimentary or TestFlight beta access. Such grants are free, do not automatically convert into paid subscriptions, and may be revoked at the end of the testing period.</li>
+      </ul>
+    </section>
+
+    <section id="acceptable-use">
+      <h2>5. Acceptable Use Policy (AUP) &amp; Passive Conduit Status</h2>
+      <p>Ethear Vast LLC operates strictly as an automated, passive network routing conduit and transient digital communications intermediary (including within the meaning of 17 U.S.C. &sect; 512(a)). TIAN does not initiate transmissions, select the receivers of transmissions, or inspect or modify encrypted traffic routed through our network.</p>
+      <p>TIAN is engineered to protect lawful internet privacy. You remain solely responsible for your conduct while connected. You must <strong>not</strong> use TIAN to:</p>
+      <ul>
+        <li>Gain unauthorized access to accounts, servers, networks, or devices, steal credentials, or run network attacks or port scans.</li>
+        <li>Commit financial fraud, phishing, identity theft, extortion, or unlawful transactions.</li>
+        <li>Create, distribute, host, or operate malware, ransomware, spyware, or botnets.</li>
+        <li>Exploit or abuse children, distribute Child Sexual Abuse Material (CSAM), or facilitate human trafficking or violence.</li>
+        <li>Threaten, stalk, harass, or unlawfully disclose private personal information (doxxing).</li>
+        <li>Infringe copyright, trademark, or intellectual property rights.</li>
+        <li>Send bulk spam, launch Denial-of-Service (DoS/DDoS) attacks, or intentionally exhaust shared server capacity.</li>
+        <li>Resell TIAN access without authorization, bypass payment or entitlement controls, or tamper with TIAN's cryptographic or relay infrastructure.</li>
+      </ul>
+      <p><strong>Enforcement &amp; Abuse Reports:</strong> Credible reports of misuse may be sent to <a href="mailto:support@tianvpn.com">support@tianvpn.com</a> (do not include stolen credentials, private keys, or unlawful content in reports). Because multiple users share outbound Exit gateway IP addresses, a shared public IP address alone does not identify an individual subscriber. However, if we detect or confirm material abuse, payment fraud, or security threats associated with an account, we may restrict, suspend, or terminate access immediately.</p>
+    </section>
+
+    <section id="service-limits">
+      <h2>6. Service Availability &amp; Technical Limits</h2>
+      <p>Connection speeds, latency, server locations, and domain-filtering coverage naturally vary across networks and regions. While TIAN separates device-facing and destination-facing relay roles and blocks known advertising and tracking domains via enabled filter lists, <strong>no VPN or filter can guarantee 100% anonymity, unblockable access to every website or regional streaming catalog, or removal of every advertisement or threat</strong>. Signed-in third-party accounts, browser cookies, and device-level telemetry operate independently of network routing.</p>
+    </section>
+
+    <section id="liability">
+      <h2>7. Disclaimer of Warranties &amp; Limitation of Liability</h2>
+      <div class="legal-caps">
+        <p><strong>DISCLAIMER OF WARRANTIES:</strong> TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. ETHEAR VAST LLC DOES NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR IMMUNE FROM EVERY NETWORK OR PLATFORM LIMITATION.</p>
+        <p><strong>LIMITATION OF LIABILITY:</strong> TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL ETHEAR VAST LLC, ITS MEMBERS, OFFICERS, EMPLOYEES, CONTRACTORS, OR INFRASTRUCTURE PROVIDERS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF DATA, PROFITS, OR REVENUE ARISING OUT OF OR RELATED TO YOUR USE OF OR INABILITY TO USE THE SERVICE. IN ALL EVENTS, ETHEAR VAST LLC'S TOTAL AGGREGATE LIABILITY FOR ALL CLAIMS RELATING TO THE SERVICE SHALL NOT EXCEED THE GREATER OF: (A) THE TOTAL AMOUNT YOU PAID TO ETHEAR VAST LLC FOR THE SERVICE IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE CLAIM, OR (B) FIFTY U.S. DOLLARS ($50.00 USD). NOTHING IN THESE TERMS EXCLUDES MANDATORY CONSUMER RIGHTS THAT CANNOT BE WAIVED BY LAW.</p>
+      </div>
+    </section>
+
+    <section id="indemnification">
+      <h2>8. Indemnification</h2>
+      <p>You agree to defend, indemnify, and hold harmless Ethear Vast LLC, its members, affiliates, and service providers from and against any claims, liabilities, damages, judgments, losses, and reasonable legal fees arising out of or resulting from: (a) your breach of these Terms or the Acceptable Use Policy; (b) your violation of any law or the rights of any third party while using TIAN; or (c) unauthorized use of your account caused by your failure to safeguard your credentials.</p>
+    </section>
+
+    <section id="disputes">
+      <h2>9. Governing Law, Arbitration &amp; Class Action Waiver</h2>
+      <p>These Terms are governed by the laws of the <strong>State of Florida, United States</strong>, without regard to conflict-of-law rules. Before initiating any formal proceeding, you agree to contact <a href="mailto:support@tianvpn.com">support@tianvpn.com</a> and allow thirty (30) days for informal resolution.</p>
+      <p>Except for qualifying small-claims actions or emergency injunctive relief to protect network security or intellectual property, any unresolved dispute arising out of or relating to these Terms or the Service shall be resolved by final and binding individual arbitration under the Consumer Arbitration Rules of the American Arbitration Association (AAA), with venue in <strong>Orange County, Florida</strong>. <strong>You and Ethear Vast LLC agree that all claims must be brought strictly in an individual capacity, and not as a plaintiff or class member in any class, collective, or representative action.</strong></p>
+    </section>
+
+    <section id="contact">
+      <h2>10. Changes &amp; Contact Information</h2>
+      <p>We will provide clear notice of material updates to these Terms and update the Effective Date at the top of this page. Subscription price changes follow Apple's or Google's applicable notice and consent procedures.</p>
+      <p>For account support, billing questions, privacy requests, or abuse reports, contact:<br>
+      <strong>Ethear Vast LLC</strong> &middot; <a href="mailto:support@tianvpn.com">support@tianvpn.com</a></p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>&copy; 2026 Ethear Vast LLC. TIAN Private Network.</div>
+    <div class="footer-links">
+      <a href="https://tianvpn.com">Home</a>
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="mailto:support@tianvpn.com">support@tianvpn.com</a>
+    </div>
+  </footer>
+
+</body>
+</html>
