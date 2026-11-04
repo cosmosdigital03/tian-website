@@ -25,5 +25,21 @@ body:not(.js-enabled) .scenario-layout{display:block}
 @media(max-width:850px){.comparison-section{padding:62px 0}.comparison-table th,.comparison-table td{padding:18px 12px}.comparison-table td{font-size:10px}.comparison-table tbody th{font-size:10px}.comparison-table small{font-size:8px}.comparison-context{align-items:flex-start;gap:20px}.comparison-context p{font-size:10px}.comparison-note{font-size:10px}}
 @media(max-width:600px){.comparison-section{padding:47px 0}.comparison-table-wrap{border:0;overflow:visible}.comparison-table{display:block}.comparison-table thead{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.comparison-table tbody{display:block}.comparison-table tbody tr{display:block;border:1px solid #c3d2dd;border-radius:4px;overflow:hidden;margin-bottom:18px}.comparison-table tbody th{display:block;width:100%;font-size:12px;background:#dce7ee;padding:15px 18px;border-right:0;line-height:1.5;color:#294b65}.comparison-table td{display:block;border-right:0;font-size:12px;padding:15px 18px;line-height:1.75}.comparison-table td::before{content:attr(data-label);display:block;color:#294b65;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}.comparison-table tbody tr:last-child>*{border-bottom:1px solid #cad7e0}.comparison-table tbody tr>*:last-child{border-bottom:0}.comparison-context{display:block;padding-top:18px}.comparison-context p{font-size:11px}.comparison-context .text-link{margin-top:17px}.comparison-note{font-size:11px;margin-top:23px}}
 
-/* TIAN emblem in the site header and footer. */
+/* TIAN emblem in the site header and footer, plus signature middle-left glow cards and bold display typography. */
 .brand-mark{display:grid;place-items:center;flex-shrink:0}.brand-logo{display:block;width:46px;height:46px;max-width:none;object-fit:contain}.footer .brand-logo{width:40px;height:40px}
+.header{position:sticky;top:0;z-index:20;backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);background:rgba(5,11,22,.84);border-bottom:1px solid rgba(126,200,255,.15)}
+.main-nav{background:radial-gradient(ellipse at 10% 50%,rgba(44,118,194,.32),transparent 70%),rgba(8,18,34,.82);border:1px solid rgba(126,200,255,.2);border-radius:999px;padding:6px 24px;margin-inline:auto;font-weight:600}
+.button{border-radius:999px;padding:14px 28px;background:linear-gradient(135deg,#e0f4ff 0%,#8fd3ff 50%,#5ce1e6 100%);color:#04101f;font-weight:750;border:1px solid #e6f7ff;box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 12px 32px rgba(92,225,230,.24)}
+.button:hover{background:linear-gradient(135deg,#f0faff 0%,#a6deff 50%,#74f0f5 100%);transform:translateY(-2px)}
+.prose{text-align:center;max-width:1040px;margin-inline:auto}
+.prose .eyebrow{justify-content:center;color:#6be5f2;font-weight:700}
+.prose h1{margin-inline:auto;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif;font-weight:800;letter-spacing:-.045em}
+.prose .intro{margin-inline:auto;margin-bottom:28px}
+.prose .actions{justify-content:center}
+.support-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:52px;text-align:left}
+.support-card{background:radial-gradient(ellipse 68% 92% at 4% 50%,rgba(42,118,196,.42) 0%,rgba(22,60,106,.22) 44%,transparent 74%),radial-gradient(ellipse 55% 70% at 92% 16%,rgba(92,225,230,.12) 0%,transparent 65%),linear-gradient(160deg,#091526 0%,#050c18 58%,#030811 100%);border:1px solid rgba(92,168,230,.26);border-radius:18px;padding:32px 30px;box-shadow:inset 1px 0 0 rgba(126,208,255,.34),inset 0 1px 0 rgba(190,230,255,.12),0 26px 64px rgba(0,0,0,.46)}
+.support-card h2{margin-top:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif;font-weight:750;letter-spacing:-.035em;font-size:28px;color:#eef6ff}
+.support-card p{font-size:13.5px;line-height:1.85;color:#a4bed4;margin-bottom:14px}
+.support-card p:last-child{margin-bottom:0}
+@media(min-width:1151px){.header-inner{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}.header-inner>.brand{justify-self:start}.main-nav{margin:0}.launch-status{justify-self:end}.footer-inner{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}.footer nav{justify-content:center;margin:0}.footer .copyright{justify-self:end}}
+@media(max-width:760px){.support-grid{grid-template-columns:1fr}.main-nav{background:none;border:0;padding:0}}

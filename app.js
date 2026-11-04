@@ -46,16 +46,16 @@
 
   const data = {
     entry: {
-      kicker: 'THE DEVICE-FACING RELAY',
-      title: 'Where you connect.\nNot where you’re going.',
-      description: 'Entry handles your connecting IP and forwards the encrypted inner connection to Exit. The destination-facing work happens at the other relay.',
-      detail: 'Your device-to-Exit inner connection stays encrypted through Entry.'
+      kicker: '01 / THE IDENTITY SHIELD',
+      title: 'Where you connect.\nProtected from the start.',
+      description: 'The Identity Shield receives your connection and masks your personal IP address at the point of entry—without visibility into the websites or services you visit.',
+      detail: 'Your personal IP address stops here and never reaches your destination.'
     },
     exit: {
-      kicker: 'THE DESTINATION-FACING RELAY',
-      title: 'Where you’re going.\nA separate point of view.',
-      description: 'Exit handles the inner connection and routes traffic onward to your destination. It receives that connection through Entry rather than directly from your original connecting IP.',
-      detail: 'Websites receive the Exit IP. Accounts and cookies can still identify you.'
+      kicker: '02 / THE DESTINATION SHIELD',
+      title: 'Where you’re going.\nCompletely separated.',
+      description: 'The Destination Shield connects you onward to the web and applies intelligent domain filtering—without knowing your original device IP address.',
+      detail: 'Websites see the Destination Shield address, never your personal connection.'
     }
   };
   const tabs = [...document.querySelectorAll('[data-shield]')];

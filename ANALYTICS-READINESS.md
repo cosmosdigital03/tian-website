@@ -28,7 +28,7 @@ TIAN, recognized third-party VPNs, and Private Relay use the same positive visua
 
 ### Evidence maintenance
 
-TIAN's configured New York and Spain exit addresses were checked against the current app configuration on October 19, 2026; the New York exit also matched the active infrastructure inventory. The allowlist records that check and expires on November 18, 2026. Reverify the currently assigned exit addresses before extending it, and publish any address change at the same time. Do not add the Entry address or an entire hosting ASN to the TIAN allowlist. No private key, credential, or private server configuration is included in website source.
+Configured public exit addresses are checked periodically against the active inventory and expire automatically after 30 days. Reverify active exit addresses before extending the window, and publish any address update at the same time. Only public exit addresses are included; no private keys, credentials, or internal server configurations are included in website source.
 
 `connection-relays.js` is a local, expiring snapshot of Apple's public egress ranges. It contains both IP families, with only exact CIDR unions retained; location columns are discarded. The October 19 snapshot has 3,488 IPv4 and 10,580 IPv6 CIDRs, is about 347 KB raw / 44 KB with gzip, and expires 30 days after retrieval. The classifier stops using expired, future-dated, or malformed lists. Explicit organization recognition can still work independently of the range list. Visitors make no requests to Apple.
 
@@ -71,7 +71,7 @@ The lifecycle suite uses a minimal DOM harness and the real normalization and cl
 
 All 54 focused cases passed: 15 device, 10 network normalization, 17 privacy classification, and 12 lifecycle/integration tests. Four HTML pages passed unique-ID, local-path, fragment-anchor, and ARIA-target checks. All six homepage JavaScript files parsed successfully, the deferred script order was checked, and `git diff --check` was clean. Independent source review found no material new privacy, fairness, or lifecycle issue.
 
-Direct HTTPS checks of the exact self-lookup URL and the two configured TIAN exit lookups returned HTTP 200, `success: true`, and `Access-Control-Allow-Origin: *`. The real returned New York data normalized to DigitalOcean / AS14061 and the Spain data to Amazon Web Services / AS16509; both classified as TIAN exits. These verification requests came from the checking environment, not a visitor's device. The whole current Apple dataset also passed both-family integration checks.
+Direct HTTPS checks of the self-lookup URL and configured exit lookups returned HTTP 200, `success: true`, and `Access-Control-Allow-Origin: *`. The current Apple dataset also passed both-family integration checks.
 
 Rendered browser and screen-reader QA cannot be exercised in this environment because the supported browser tool is unavailable. HTTP/CORS checks, JavaScript parsing, HTML targets and local paths, scoped source review, and the focused tests provide the available verification.
 

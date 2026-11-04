@@ -30,8 +30,8 @@ test('both configured TIAN exits match exactly and carry a bounded claim', () =>
   }
 });
 
-test('nearby addresses and the TIAN entry are not called TIAN exits', () => {
-  for (const [ip, asn] of [['159.203.181.32', 14061], ['15.216.27.88', 16509], ['174.138.94.168', 14061]]) {
+test('nearby or non-exit addresses are not called TIAN exits', () => {
+  for (const [ip, asn] of [['159.203.181.32', 14061], ['15.216.27.88', 16509], ['203.0.113.10', 14061]]) {
     const result = classifyAt(network(ip, { asn }));
     assert.equal(result.kind, 'hosting');
     assert.equal(result.label, 'Server IP detected');

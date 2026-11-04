@@ -191,24 +191,24 @@ test('Entry is initially selected with one tab stop and an associated, readable 
   assertSelected(p, 'tab-entry', 'tab-exit');
   assert.equal(p.get('architecture-panel').getAttribute('role'), 'tabpanel');
   assert.equal(p.get('architecture-panel').tabIndex, 0);
-  assert.match(p.get('shield-description').textContent, /Entry handles your connecting IP/);
+  assert.match(p.get('shield-description').textContent, /Identity Shield receives your connection/);
 });
 
 test('Selecting Exit and Entry updates all copy and ARIA state without forcing focus', () => {
   const p = page();
   p.get('tab-exit').click();
   assertSelected(p, 'tab-exit', 'tab-entry');
-  assert.equal(p.get('shield-kicker').textContent, 'THE DESTINATION-FACING RELAY');
-  assert.equal(p.get('shield-title').textContent, 'Where you’re going.\nA separate point of view.');
-  assert.match(p.get('shield-description').textContent, /rather than directly from your original connecting IP/);
-  assert.match(p.get('shield-detail').textContent, /Accounts and cookies can still identify you/);
+  assert.equal(p.get('shield-kicker').textContent, '02 / THE DESTINATION SHIELD');
+  assert.equal(p.get('shield-title').textContent, 'Where you’re going.\nCompletely separated.');
+  assert.match(p.get('shield-description').textContent, /without knowing your original device IP/);
+  assert.match(p.get('shield-detail').textContent, /never your personal connection/);
   assert.equal(p.get('tab-exit').focusCalls.length, 0);
   p.get('tab-entry').click();
   assertSelected(p, 'tab-entry', 'tab-exit');
-  assert.equal(p.get('shield-kicker').textContent, 'THE DEVICE-FACING RELAY');
-  assert.equal(p.get('shield-title').textContent, 'Where you connect.\nNot where you’re going.');
-  assert.match(p.get('shield-description').textContent, /forwards the encrypted inner connection to Exit/);
-  assert.match(p.get('shield-detail').textContent, /stays encrypted through Entry/);
+  assert.equal(p.get('shield-kicker').textContent, '01 / THE IDENTITY SHIELD');
+  assert.equal(p.get('shield-title').textContent, 'Where you connect.\nProtected from the start.');
+  assert.match(p.get('shield-description').textContent, /masks your personal IP address at the point of entry/);
+  assert.match(p.get('shield-detail').textContent, /never reaches your destination/);
 });
 
 for (const key of ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp']) {

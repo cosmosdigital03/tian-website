@@ -94,16 +94,16 @@ test('The hero names information views, not a traffic-routing or reassembly diag
     findAll(document, child => child.attrs.id === id)[0]);
   assert.ok(descriptions.every(node => node && text(node)), 'Every figure description must resolve to readable text');
   assert.ok(descriptions.some(node => /separate points of view/i.test(text(node))));
-  assert.ok(descriptions.some(node => /Relay information views, not traffic paths/i.test(text(node))));
+  assert.ok(descriptions.some(node => /Two dedicated shield roles/i.test(text(node))));
   const visibleCopy = findAll(hero, node => ['p', 'span'].includes(node.tag)).filter(node => {
     for (let parent = node.parent; parent && parent !== hero; parent = parent.parent) {
       if (parent.tag === 'svg') return false;
     }
     return true;
   }).map(text).join(' ');
-  assert.match(visibleCopy, /Relay information views, not traffic paths/i,
+  assert.match(visibleCopy, /Two dedicated shield roles/i,
     'The key qualification must be visible outside decorative artwork');
-  assert.match(visibleCopy, /No data is split or reassembled/i);
+  assert.match(visibleCopy, /neither side holds the full picture/i);
   assert.doesNotMatch(text(hero), /(?:guaranteed|complete|total) anonymity|untraceable|impossible to (?:track|identify)/i);
 });
 
@@ -117,11 +117,11 @@ test('Two labeled picture halves remain distinct from the Entry and Exit knowled
     const pieces = byClass(story, pieceName);
     assert.equal(pieces.length, 1);
     assert.match(text(pieces[0]), label);
-    assert.equal(findAll(pieces[0], child => child.tag === 'svg').length, 1, 'Each information card retains its own picture half');
+    assert.equal(findAll(pieces[0], child => child.tag === 'img').length, 1, 'Each information card retains its own picture half');
     assert.equal(byClass(pieces[0], 'piece-picture')[0].attrs['aria-hidden'], 'true', 'Decorative picture halves must not duplicate the text labels');
   }
-  assert.match(text(byClass(story, 'well-entry')[0]), /ENTRY VIEW.*connecting IP.*Destination encrypted.*through this relay/i);
-  assert.match(text(byClass(story, 'well-exit')[0]), /EXIT VIEW.*destination.*through Entry/i);
+  assert.match(text(byClass(story, 'well-entry')[0]), /ENTRY VIEW.*connecting IP.*Destination stays private/i);
+  assert.match(text(byClass(story, 'well-exit')[0]), /EXIT VIEW.*destination.*Personal IP stays hidden/i);
   for (const node of [...byClass(story, 'information-piece'), ...byClass(story, 'knowledge-well')]) {
     for (let ancestor = node; ancestor; ancestor = ancestor.parent) {
       assert.equal(Object.hasOwn(ancestor.attrs, 'hidden'), false);
@@ -207,22 +207,19 @@ test('Pausing or reducing motion leaves the separated story readable', () => {
   assert.match(text(motionButton[0]), /Pause motion/);
 });
 
-test('The architecture section distinguishes relay knowledge from the actual serial transport', () => {
+test('The architecture section distinguishes Entry and Exit shield roles clearly', () => {
   const comparison = byClass(document, 'knowledge-comparison')[0];
   assert.ok(comparison);
   const cards = byClass(comparison, 'knowledge-card');
   assert.equal(cards.length, 2);
-  assert.match(text(cards[0]), /ENTRY.*Connecting IP.*Handled here.*Destination.*encrypted inner connection/i);
-  assert.match(text(cards[1]), /EXIT.*Destination connections.*Handled here.*through Entry, not directly from your device IP/i);
+  assert.match(text(cards[0]), /ENTRY SHIELD.*Connecting IP.*Protected at entry.*Browsing destination.*Kept private/i);
+  assert.match(text(cards[1]), /EXIT SHIELD.*Destination connections.*Handled cleanly onward.*Your personal IP.*Never visible/i);
   const transport = byClass(document, 'transport-caption')[0];
-  assert.match(text(transport), /device connects to Exit through Entry/i);
-  assert.match(text(transport), /inner connection stays encrypted/i);
-  assert.match(text(transport), /not your traffic into parallel paths/i);
+  assert.match(text(transport), /Identity Shield protects your personal IP/i);
+  assert.match(text(transport), /Destination Shield connects you onward/i);
   assert.equal(byClass(document, 'route-map').length, 0);
   const boundary = text(byClass(document, 'architecture-boundary')[0]);
-  assert.match(boundary, /not a promise of anonymity/i);
-  assert.match(boundary, /Both relays are operated by TIAN/i);
-  assert.match(boundary, /traffic analysis can still correlate activity/i);
+  assert.match(boundary, /zero browsing-history or DNS-query logs/i);
 });
 
 test('The hero no longer depicts serial shields or animated payload routing', () => {
@@ -234,14 +231,14 @@ test('The hero no longer depicts serial shields or animated payload routing', ()
     'Moving information cards must not become a payload following a traffic path');
 });
 
-test('Retro headings use local system serifs while readable body text stays sans-serif', () => {
+test('Headings use bold modern system display type while body text stays sans-serif', () => {
   for (const [name, selectors] of [
     ['hero', ['h1', '.hero h1']],
     ['section headings', ['h2', '.section-heading h2', '.details-heading h2']],
     ['architecture panel', ['h3', '.architecture-panel h3']]
   ]) {
     const fonts = selectors.flatMap(fontFor);
-    assert.ok(fonts.some(font => /Georgia|Iowan|Palatino/i.test(font) && /(?:^|,)\s*serif\s*$/i.test(font)), name + ' must retain the local editorial serif stack');
+    assert.ok(fonts.some(font => /-apple-system|SF Pro Display|Inter|Segoe UI/i.test(font) && /(?:^|,)\s*sans-serif\s*$/i.test(font)), name + ' must retain the local modern display sans-serif stack');
   }
   assert.ok(fontFor('body').some(font => /sans-serif\s*$/i.test(font)), 'Body copy must remain a system sans-serif');
 });
