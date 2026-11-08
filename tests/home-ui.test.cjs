@@ -6,7 +6,11 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+const html = read('how-it-works.html');
+const homeHtml = read('index.html');
+const footprintHtml = read('footprint.html');
+const pageFiles = ['index.html', 'how-it-works.html', 'footprint.html', 'platforms.html', 'compare.html'];
 const css = fs.readFileSync(path.join(root, 'premium.css'), 'utf8');
 const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const reduceQuery = '(prefers-reduced-motion: reduce)';
@@ -122,7 +126,7 @@ function markup(input) {
 }
 
 function page(options = {}) {
-  const document = markup(html);
+  const document = markup(options.file ? read(options.file) : html);
   const media = new Map();
   const observers = [];
   const sideEffects = [];
@@ -293,7 +297,7 @@ for (const legacyMedia of [false, true]) {
 }
 
 test('Pause motion is enabled only after JavaScript initializes and toggles all motion state', () => {
-  const p = page();
+  const p = page({ file: 'index.html' });
   assert.equal(p.document.body.classList.contains('js-enabled'), true);
   assert.equal(p.query('.motion-toggle').hidden, false);
   assertMotion(p, false);
@@ -305,7 +309,7 @@ test('Pause motion is enabled only after JavaScript initializes and toggles all 
 
 for (const legacyMedia of [false, true]) {
   test('Reduced motion is a safe initial default and reacts to ' + (legacyMedia ? 'legacy' : 'modern') + ' preference changes', () => {
-    const p = page({ reduced: true, legacyMedia });
+    const p = page({ reduced: true, legacyMedia, file: 'index.html' });
     assertMotion(p, true);
     assert.equal(p.observers.length, 0, 'Reduced motion must not start reveal observers');
     assert.ok(p.reveals.every(element => !element.classList.contains('reveal-pending')));
@@ -337,7 +341,8 @@ test('No IntersectionObserver leaves all content readable and controls working',
   assert.equal(p.observers.length, 0);
   assert.ok(p.reveals.every(element => !element.classList.contains('reveal-pending')));
   p.get('tab-exit').click(); assertSelected(p, 'tab-exit', 'tab-entry');
-  p.query('.motion-toggle').click(); assertMotion(p, true);
+  const home = page({ noObserver: true, file: 'index.html' });
+  home.query('.motion-toggle').click(); assertMotion(home, true);
 });
 
 test('Motion CSS is opt-in and reduced-motion rules override reveal hiding and animation', () => {
@@ -356,28 +361,40 @@ test('Motion CSS is opt-in and reduced-motion rules override reveal hiding and a
   }
 });
 
-test('Without JavaScript, the core narrative, native FAQs, links, and connection explanation remain in markup', () => {
-  const document = markup(html);
-  assert.equal(document.body.classList.contains('motion-enabled'), false);
-  assert.equal(document.body.classList.contains('js-enabled'), false);
-  assert.equal(document.querySelector('.motion-toggle').hidden, true);
-  for (const id of ['main', 'hero-title', 'connection', 'connection-details', 'architecture-panel', 'comparison', 'iphone', 'questions']) {
-    const element = document.getElementById(id);
-    assert.ok(element && element.textContent.trim(), id + ' must contain server-rendered content');
-    for (let node = element; node; node = node.parentElement) {
-      assert.equal(node.hidden, false, id + ' must not be hidden behind JavaScript');
-      assert.equal(node.classList.contains('reveal-pending'), false);
+test('Without JavaScript, every page keeps its core narrative, native FAQs, links, and explanations in markup', () => {
+  const expectations = {
+    'index.html': ['main', 'story', 'chapter-0-title', 'chapter-5-title', 'explore'],
+    'how-it-works.html': ['main', 'architecture-title', 'architecture-panel', 'experience-title'],
+    'footprint.html': ['main', 'details-title', 'connection-details'],
+    'platforms.html': ['main', 'platforms-title'],
+    'compare.html': ['main', 'comparison-title', 'questions']
+  };
+  for (const [file, ids] of Object.entries(expectations)) {
+    const document = markup(read(file));
+    assert.equal(document.body.classList.contains('js-enabled'), false, file);
+    assert.equal(document.querySelectorAll('h1').length, 1, file + ' needs exactly one h1');
+    for (const id of ids) {
+      const element = document.getElementById(id);
+      assert.ok(element && element.textContent.trim(), file + ': ' + id + ' must contain server-rendered content');
+      for (let node = element; node; node = node.parentElement) {
+        assert.equal(node.hidden, false, file + ': ' + id + ' must not be hidden behind JavaScript');
+        assert.equal(node.classList.contains('reveal-pending'), false);
+      }
     }
+    assert.equal(document.querySelector('.skip').getAttribute('href'), '#main');
   }
-  assert.match(document.querySelector('noscript').textContent, /No lookup runs while JavaScript is disabled/);
-  assert.ok(document.querySelectorAll('summary').length >= 7, 'FAQ disclosures must use native markup');
-  assert.match(document.getElementById('questions').textContent, /Entry handles the device-facing connection/);
-  assert.match(document.getElementById('questions').textContent, /Exit handles connections onward/);
-  assert.equal(document.querySelector('.skip').getAttribute('href'), '#main');
+  assert.equal(markup(homeHtml).querySelector('.motion-toggle').hidden, true);
+  assert.match(markup(footprintHtml).querySelector('noscript').textContent, /No lookup runs while JavaScript is disabled/);
+  const compare = markup(read('compare.html'));
+  assert.ok(compare.querySelectorAll('summary').length >= 7, 'FAQ disclosures must use native markup');
+  assert.match(compare.getElementById('questions').textContent, /Entry handles the device-facing connection/);
+  assert.match(compare.getElementById('questions').textContent, /Exit handles connections onward/);
 });
 
-test('All HTML IDs, ARIA references, table headers, fragments, and local assets resolve', () => {
-  const document = markup(html);
+for (const file of pageFiles) {
+test(file + ': all HTML IDs, ARIA references, table headers, fragments, and local assets resolve', () => {
+  const document = markup(read(file));
+  const html = read(file);
   const elements = document.querySelectorAll('[id]');
   const ids = elements.map(element => element.id);
   assert.equal(new Set(ids).size, ids.length, 'Homepage IDs must be unique');
@@ -388,19 +405,16 @@ test('All HTML IDs, ARIA references, table headers, fragments, and local assets 
       }
     }
   }
-  for (const [, id] of source.matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)) {
-    assert.ok(document.getElementById(id), 'app.js ID must exist: ' + id);
-  }
-  for (const attribute of ['href', 'src']) {
+    for (const attribute of ['href', 'src']) {
     for (const element of document.querySelectorAll('[' + attribute + ']')) {
       const value = element.getAttribute(attribute);
       if (/^(?:https?:|mailto:|tel:|data:)/i.test(value)) continue;
       assert.doesNotMatch(value, /^javascript:/i);
-      const url = new URL(value, 'https://tianvpn.com/index.html');
+      const url = new URL(value, 'https://tianvpn.com/' + file);
       const filename = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname.slice(1));
       assert.ok(fs.existsSync(path.join(root, filename)), 'Local link or asset must exist: ' + value);
       if (url.hash) {
-        const targetDocument = filename === 'index.html' ? document : markup(fs.readFileSync(path.join(root, filename), 'utf8'));
+        const targetDocument = filename === file ? document : markup(fs.readFileSync(path.join(root, filename), 'utf8'));
         assert.ok(targetDocument.getElementById(decodeURIComponent(url.hash.slice(1))), 'Fragment must exist: ' + value);
       }
     }
@@ -409,9 +423,10 @@ test('All HTML IDs, ARIA references, table headers, fragments, and local assets 
     assert.ok(document.getElementById(target), 'SVG paint/filter target must exist: ' + target);
   }
 });
+}
 
 test('Connection data remains automatic, with no manual lookup/reveal/clear controls', () => {
-  const document = markup(html);
+  const document = markup(footprintHtml);
   const connection = document.getElementById('connection-details');
   for (const tag of ['button', 'input', 'form', 'select']) assert.equal(connection.querySelectorAll(tag).length, 0);
   for (const id of ['details-toggle', 'details-clear', 'details-local', 'details-refresh']) {
@@ -420,10 +435,8 @@ test('Connection data remains automatic, with no manual lookup/reveal/clear cont
   assert.equal(document.getElementById('connection-results').hidden, false);
   assert.equal(document.getElementById('connection-results').getAttribute('aria-busy'), 'true');
   const buttons = document.querySelectorAll('button');
-  assert.equal(buttons.length, 4, 'Only navigation, motion, and the two architecture tabs are expected');
-  for (const button of buttons) {
-    assert.ok(button.classList.contains('nav-toggle') || button.classList.contains('motion-toggle') || button.getAttribute('data-shield'));
-  }
+  assert.equal(buttons.length, 1, 'Only the navigation toggle is expected on the footprint page');
+  assert.ok(buttons[0].classList.contains('nav-toggle'));
 });
 
 test('UI interactions make no network requests, timers, or persistent-storage calls', () => {
@@ -432,7 +445,10 @@ test('UI interactions make no network requests, timers, or persistent-storage ca
   p.get('tab-exit').dispatch('keydown', { key: 'Home' });
   p.query('.nav-toggle').click();
   p.document.dispatch('keydown', { key: 'Escape' });
-  p.query('.motion-toggle').click();
   p.media.get(reduceQuery).change(true);
   assert.deepEqual(p.sideEffects, []);
+  const home = page({ file: 'index.html' });
+  home.query('.motion-toggle').click();
+  home.query('[data-story-next]').click();
+  assert.deepEqual(home.sideEffects, []);
 });

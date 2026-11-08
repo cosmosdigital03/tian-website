@@ -4,6 +4,17 @@ Changes to the public website at https://tianvpn.com/ (this repository only). Th
 
 Newest first. Dates are commit dates. An entry records what changed in source, not a guarantee of how the live site looks today.
 
+## 2026-11-09 - Cinematic homepage and separate pages (preview branch `cinematic-redesign`)
+
+Not published until the owner approves. Same palette as the existing site.
+
+- Homepage is now a scroll-driven story: the camera follows a connection from the device, through the Entry shield (who you are), to a wide view of two points and two information views, then the Exit shield (where you go) and down to the open internet. Opening line: "TIAN is a private network that separates who you are from where you go." Built in `story.js` and `story.css` with no libraries.
+- Navigation now opens real pages instead of scrolling one page: `how-it-works.html`, `footprint.html`, `platforms.html`, `compare.html`. Each has one h1, the current page is marked, and old in-page links in support, privacy, terms and 404 point to the new pages.
+- Story controls: chapter dots, "Skip the story", Pause motion; reduced-motion, no-JavaScript and no-canvas visitors get the six chapters as stacked sections.
+- Tests: 100 of 100 pass (`node --test tests/*.test.cjs`). Connection, tab and ID tests now run against the page that owns the content; the retired hero-illustration tests were replaced by story tests.
+- Reviewed in a browser at about 900px wide and 375px wide for the homepage, plus the how-it-works and footprint pages. Not reviewed: support, privacy, terms and 404 at phone width, tablet, wide desktop above 1400px, Safari and Firefox, real devices, performance on older phones.
+- Known gaps: leftover CSS from the old hero remains in `premium.css`; the two-points shot is tuned by eye and may need adjustment on very wide or very short windows.
+
 ## 2026-11-08 - UI/UX refinement pass
 
 Commit df517f5 (premium.css, additive CSS only).
