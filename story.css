@@ -106,3 +106,7 @@ body.story-static .chapter h1,body.story-static .chapter h2,body:not(.js-enabled
 
 .chapter h1,.chapter h2,.chapter p{text-shadow:0 1px 18px rgba(3,8,18,.85),0 0 2px rgba(3,8,18,.6)}
 .chapter h1 em,.chapter h2 span{text-shadow:none}
+
+/* Touch: native snapping holds each chapter, so even a hard fling stops one slide at a time. */
+.story-snap-point{position:absolute;left:0;width:1px;height:1px;pointer-events:none;scroll-snap-align:start;scroll-snap-stop:always}
+@media(pointer:coarse){html.story-snap:not(.story-snap-paused){scroll-snap-type:y mandatory;scroll-padding-top:var(--header-h)}}

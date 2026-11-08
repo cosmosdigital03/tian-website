@@ -75,12 +75,12 @@
     { p: 0.68, pos: [12, 3, -24], look: [3.5, -0.4, -32] },
     { p: 0.73, pos: [7.5, 1.4, -26], look: [3.2, -0.3, -34] },
     { p: 0.79, pos: [7, 1.2, -26.5], look: [3.4, -0.4, -34] },
-    { p: 0.87, pos: [7, -3, -38], look: [1, -11, -48] },
-    { p: 0.93, pos: [3, -2, -21], look: [0, -16, -53] },
-    { p: 1.00, pos: [-2, -3, -19], look: [0, -16.5, -53] }
+    { p: 0.87, pos: [9, 6, -22], look: [1, -12, -50] },
+    { p: 0.93, pos: [4, 20, 17], look: [0, -17, -55] },
+    { p: 1.00, pos: [-2.5, 23, 24], look: [0, -17, -55] }
   ];
   const CENTERS = [0.04, 0.22, 0.385, 0.56, 0.74, 0.92];
-  const SHIFT_X = [0.2, -0.2, 0.17, -0.2, 0.2, -0.16];
+  const SHIFT_X = [0.2, -0.2, 0.17, -0.2, 0.2, -0.17];
   const SHIFT_Y = [0, 0, 0, 0, 0, 0.06];
   const NARROW_Y = [-0.26, -0.15, -0.15, -0.15, -0.15, -0.2];
   const RANGES = [0.14, 0.3, 0.47, 0.65, 0.83];
@@ -145,33 +145,39 @@
   const stars = Array.from({ length: 260 }, () => ({ p: [lerp(-70, 70, rand()), lerp(-45, 22, rand()), lerp(-95, 18, rand())], s: lerp(0.5, 1.5, rand()), a: lerp(0.35, 1, rand()) }));
   // Open internet: a clustered network of nodes joined by curved links. Signals fire along the links
   // and light each node they reach, cascading onward like activity in a brain.
-  const gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(TAU * rand());
-  const NET_CENTER = [0, -16.5, -53];
-  const clusterCentres = Array.from({ length: 11 }, () => [NET_CENTER[0] + gauss() * 11, NET_CENTER[1] + gauss() * 3.2, NET_CENTER[2] + gauss() * 4.5]);
+  // A clean grid: three rows of nodes on two layers, evenly spaced with a little jitter,
+  // each joined to its neighbours. Far from the camera it reads as an orderly network.
+  const COLS = 13, ROWS = 5, LAYER_Y = [-19, -14];
   const NET_COLOURS = [COL.blue, COL.cyan, COL.mint];
-  const net = Array.from({ length: 230 }, (_, i) => {
-    const c = i % clusterCentres.length, cc = clusterCentres[c];
-    return { p: [cc[0] + gauss() * 3.6, cc[1] + gauss() * 2.4, cc[2] + gauss() * 3.4], tw: rand() * TAU, c, colour: NET_COLOURS[c % 3], deg: 0 };
-  });
+  const net = [];
+  const gridIndex = (c, r, l) => (l * ROWS + r) * COLS + c;
+  for (let l = 0; l < LAYER_Y.length; l++) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        net.push({ p: [(c - (COLS - 1) / 2) * 3.8 + (rand() - 0.5) * 0.9, LAYER_Y[l] + (rand() - 0.5) * 0.8, -64 + r * 5.2 + (rand() - 0.5) * 0.9], tw: rand() * TAU, c, colour: NET_COLOURS[(c + r) % 3], deg: 0 });
+      }
+    }
+  }
   const edges = [];
   const edgeKey = new Set();
   const addEdge = (i, j) => {
     const key = i < j ? i * 1000 + j : j * 1000 + i;
     if (i === j || edgeKey.has(key)) return;
     edgeKey.add(key);
-    const a = net[i].p, b = net[j].p, m = mix(a, b, 0.5), d = sub(b, a), l = len(d) || 1;
-    const side = norm(cross(d, [0, 1, 0]));
-    const bend = mul(side, (rand() - 0.5) * l * 0.3);
-    edges.push({ a: i, b: j, ctrl: [m[0] + bend[0], m[1] + bend[1] + (rand() - 0.5) * l * 0.18, m[2] + bend[2]], len: l });
+    const a = net[i].p, b = net[j].p, m = mix(a, b, 0.5);
+    edges.push({ a: i, b: j, ctrl: m, len: len(sub(b, a)) });
     net[i].deg++; net[j].deg++;
   };
-  net.forEach((n, i) => {
-    net.map((m, j) => ({ j, d: len(sub(n.p, m.p)) })).filter(o => o.j !== i).sort((x, y) => x.d - y.d).slice(0, 3).forEach(o => addEdge(i, o.j));
-  });
-  for (let k = 0; k < 26; k++) {
-    const i = Math.floor(rand() * net.length);
-    const near = net.map((m, j) => ({ j, d: len(sub(net[i].p, m.p)) })).filter(o => o.j !== i && o.d > 8 && o.d < 16);
-    if (near.length) addEdge(i, near[Math.floor(rand() * near.length)].j);
+  for (let l = 0; l < LAYER_Y.length; l++) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const i = gridIndex(c, r, l);
+        if (c + 1 < COLS) addEdge(i, gridIndex(c + 1, r, l));
+        if (r + 1 < ROWS) addEdge(i, gridIndex(c, r + 1, l));
+        if (c + 1 < COLS && r + 1 < ROWS && rand() < 0.22) addEdge(i, gridIndex(c + 1, r + 1, l));
+        if (l === 0 && rand() < 0.3) addEdge(i, gridIndex(c, r, 1));
+      }
+    }
   }
   const adj = net.map(() => []);
   edges.forEach((e, k) => { adj[e.a].push(k); adj[e.b].push(k); });
@@ -181,8 +187,7 @@
   };
   const EXIT_POINT = [EXIT[0] + 0.4, EXIT[1] - 0.8, EXIT[2] - 2.6];
   const targets = net.map((n, i) => ({ i, d: len(sub(n.p, EXIT_POINT)) })).sort((a, b) => a.d - b.d).slice(0, 7).map(o => o.i);
-  const hubs = [];
-  net.map((n, i) => i).sort((a, b) => net[b].deg - net[a].deg).forEach(i => { if (hubs.length < 3 && hubs.every(h => len(sub(net[h].p, net[i].p)) > 12)) hubs.push(i); });
+  const hubs = [gridIndex(3, 3, 1), gridIndex(8, 1, 1), gridIndex(12, 3, 1)];
   const siteLabels = ['WEBSITES', 'APPS', 'SERVICES'];
   const act = new Float32Array(net.length);
   const signals = [];
@@ -263,8 +268,10 @@
   }
 
   function pose(p) {
-    const pos0 = hermite(p, k => k.pos);
+    let pos0 = hermite(p, k => k.pos);
     const look = hermite(p, k => k.look);
+    // On phones the far view of the final network comes in closer so the grid stays readable.
+    if (narrow) pos0 = add(look, mul(sub(pos0, look), lerp(1, 0.62, smooth(clamp((p - 0.8) / 0.1)))));
     let i = 0;
     while (i < CENTERS.length - 2 && p > CENTERS[i + 1]) i++;
     const t = smooth(clamp((p - CENTERS[i]) / (CENTERS[i + 1] - CENTERS[i])));
@@ -948,7 +955,7 @@
   function drawInternet(p, t) {
     const amt = smooth(clamp((p - 0.7) / 0.14));
     if (amt <= 0.01) return;
-    const near = pt => clamp(1 - len(sub(pt, cam.pos)) / 78);
+    const near = pt => clamp(1.15 - len(sub(pt, cam.pos)) / 95);
     // links, batched by brightness so each batch is one stroke
     const buckets = [[], [], [], []];
     edges.forEach(e => {
@@ -961,7 +968,7 @@
     ctx.lineWidth = 1;
     buckets.forEach((list, i) => {
       if (!list.length) return;
-      ctx.strokeStyle = rgba(COL.cyan, (0.05 + i * 0.06) * amt);
+      ctx.strokeStyle = rgba(COL.cyan, (0.1 + i * 0.07) * amt);
       ctx.beginPath();
       list.forEach(([a, c, b]) => { ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo(c[0], c[1], b[0], b[1]); });
       ctx.stroke();
@@ -973,9 +980,9 @@
       if (!q) return;
       const k = near(n.p), a = act[i];
       const tw = 0.7 + 0.3 * Math.sin(t * 1.1 + n.tw);
-      const r = clamp((0.09 + a * 0.12) * q[2], 0.9, 3.6);
-      if (a > 0.06) glow(q, clamp(q[2] * (0.3 + a * 0.7), 3, 20), n.colour, 0.75 * a * amt * (0.4 + k));
-      ctx.fillStyle = rgba(a > 0.3 ? COL.white : n.colour, clamp((0.25 + 0.55 * k) * tw + a, 0, 1) * amt);
+      const r = clamp((0.075 + a * 0.1) * q[2], 1, 3);
+      if (a > 0.08) glow(q, clamp(q[2] * (0.25 + a * 0.5), 3, 14), n.colour, 0.7 * a * amt * (0.5 + k));
+      ctx.fillStyle = rgba(a > 0.3 ? COL.white : n.colour, clamp((0.38 + 0.5 * k) * tw + a, 0, 1) * amt);
       ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, TAU); ctx.fill();
     });
     // signals travelling along the links, with short fading tails
@@ -1036,8 +1043,9 @@
     drawInternet(p, t);
     drawFans(p, t);
     drawPathLine();
-    const showEntry = smooth(clamp((p - 0.1) / 0.14));
-    const showExit = smooth(clamp((p - 0.28) / 0.2));
+    const away = smooth(clamp((p - 0.8) / 0.1));
+    const showEntry = smooth(clamp((p - 0.1) / 0.14)) * (1 - 0.92 * away);
+    const showExit = smooth(clamp((p - 0.28) / 0.2)) * (1 - 0.6 * away);
     drawPulses(t, 1 - smooth(clamp((p - 0.14) / 0.1)));
     drawPackets(t);
     [
@@ -1109,6 +1117,11 @@
     const span = Math.max(1, root.offsetHeight - stage.offsetHeight);
     return clamp((barH - rect.top) / span);
   }
+  function rawProgress() {
+    const rect = root.getBoundingClientRect();
+    const barH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 97;
+    return (barH - rect.top) / Math.max(1, root.offsetHeight - stage.offsetHeight);
+  }
   const chapterOf = p => { let i = 0; while (i < RANGES.length && p >= RANGES[i]) i++; return i; };
   let activeChapter = -1;
   function updateUi(p) {
@@ -1127,25 +1140,30 @@
     const span = root.offsetHeight - stage.offsetHeight;
     return window.scrollY + rect.top - barH + p * span;
   }
-  // Own eased scroll so chapter jumps and the magnet feel the same in every browser.
-  let anim = 0, animCancel = false;
-  const stopAnim = () => { animCancel = true; if (anim) cancelAnimationFrame(anim); anim = 0; };
-  function scrollToY(y) {
+  // Own eased scroll so chapter jumps, the magnet and hard scrolls feel the same in every browser.
+  const html = document.documentElement;
+  let anim = 0, animCancel = false, snapPause = 0;
+  const stopAnim = () => { animCancel = true; if (anim) cancelAnimationFrame(anim); anim = 0; html.classList.remove('story-snap-paused'); };
+  // Native touch snapping must not fight our own scroll animation.
+  const pauseSnap = ms => { html.classList.add('story-snap-paused'); clearTimeout(snapPause); snapPause = setTimeout(() => { if (!anim) html.classList.remove('story-snap-paused'); }, ms); };
+  function scrollToY(y, done) {
     stopAnim();
     const y0 = window.scrollY, d = y - y0;
-    if (Math.abs(d) < 2) return;
-    const dur = clamp(380 + Math.abs(d) * 0.3, 420, 1100), t0 = performance.now();
+    if (Math.abs(d) < 2) { if (done) done(); return; }
+    const dur = clamp(420 + Math.abs(d) * 0.28, 520, 1000), t0 = performance.now();
     animCancel = false;
+    html.classList.add('story-snap-paused');
     const step = now => {
       if (animCancel) { anim = 0; return; }
       const k = clamp((now - t0) / dur);
       const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
       window.scrollTo({ top: y0 + d * e, left: 0, behavior: 'instant' });
-      anim = k < 1 ? requestAnimationFrame(step) : 0;
+      if (k < 1) anim = requestAnimationFrame(step);
+      else { anim = 0; pauseSnap(250); if (done) done(); }
     };
     anim = requestAnimationFrame(step);
   }
-  ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(type => window.addEventListener(type, () => { if (anim) stopAnim(); }, { passive: true }));
+  ['touchstart', 'pointerdown'].forEach(type => window.addEventListener(type, () => { if (anim) stopAnim(); }, { passive: true }));
   const goTo = index => scrollToY(scrollForProgress(CENTERS[index]));
   dots.forEach((el, n) => el.addEventListener('click', () => goTo(n)));
   root.querySelectorAll('[data-story-next]').forEach(el => el.addEventListener('click', event => {
@@ -1172,7 +1190,9 @@
     last = now;
     if (!isPaused()) { time += dt; stepNet(dt); }
     const target = readProgress();
-    cur = smoothDamp(cur, target, 0.11, dt);
+    const damped = smoothDamp(cur, target, 0.11, dt);
+    // Never sweep faster than about a chapter per half second, even if the scroll bar is dragged.
+    cur += clamp(damped - cur, -dt * 0.34, dt * 0.34);
     if (Math.abs(target - cur) < 0.00006 && Math.abs(vel.v) < 0.0005) { cur = target; vel.v = 0; }
     draw(cur, time);
     updateUi(cur);
@@ -1201,11 +1221,81 @@
   window.addEventListener('touchend', () => { touching = false; armSnap(); }, { passive: true });
   window.addEventListener('touchcancel', () => { touching = false; armSnap(); }, { passive: true });
 
+
+  // Hard scrolls (a fling, a spun wheel, Page Down) move exactly one chapter and then hold;
+  // slow scrolling stays native and smooth. Touch uses native snapping (see story.css).
+  const finePointer = window.matchMedia('(pointer: fine)');
+  const coarsePointer = window.matchMedia('(pointer: coarse)');
+  const STEPS = [0, ...CENTERS.slice(1)];
+  const wheelLog = [];
+  let locked = false, lastWheel = 0;
+  const lineHeight = 32;
+  function stepChapter(dir) {
+    const p = rawProgress();
+    let target = -1;
+    if (dir > 0) { for (let i = 0; i < STEPS.length; i++) if (STEPS[i] > p + 0.012) { target = i; break; } }
+    else { for (let i = STEPS.length - 1; i >= 0; i--) if (STEPS[i] < p - 0.012) { target = i; break; } }
+    if (target < 0) return false;
+    locked = true;
+    scrollToY(scrollForProgress(STEPS[target]), function release() {
+      if (performance.now() - lastWheel > 170) locked = false; else setTimeout(release, 60);
+    });
+    return true;
+  }
+  // Leaving the story at either end stays native so the page can scroll on.
+  const canStep = (dir, p) => p > -0.03 && p < 0.995 && (dir > 0 ? p < STEPS[STEPS.length - 1] - 0.004 : p > 0.012);
+  window.addEventListener('wheel', event => {
+    if (event.ctrlKey || event.defaultPrevented) return;
+    const dy = event.deltaMode === 1 ? event.deltaY * lineHeight : event.deltaMode === 2 ? event.deltaY * innerHeight : event.deltaY;
+    if (!dy || Math.abs(dy) < Math.abs(event.deltaX)) return;
+    const now = performance.now(), dir = dy > 0 ? 1 : -1, p = rawProgress();
+    lastWheel = now;
+    if (p < -0.03 || p > 1.0) { locked = false; return; }
+    if (locked) { event.preventDefault(); return; }
+    if (anim) stopAnim();
+    if (!canStep(dir, p)) return;
+    wheelLog.push([now, Math.abs(dy)]);
+    while (wheelLog.length && now - wheelLog[0][0] > 90) wheelLog.shift();
+    const burst = wheelLog.reduce((sum, e) => sum + e[1], 0);
+    if (burst >= 320 || Math.abs(dy) >= 260) {
+      event.preventDefault();
+      wheelLog.length = 0;
+      stepChapter(dir);
+    }
+  }, { passive: false });
+  window.addEventListener('keydown', event => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const el = document.activeElement;
+    if (el && /^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(el.tagName)) return;
+    const down = event.key === 'ArrowDown' || event.key === 'PageDown' || (event.key === ' ' && !event.shiftKey);
+    const up = event.key === 'ArrowUp' || event.key === 'PageUp' || (event.key === ' ' && event.shiftKey);
+    if (!down && !up) { if (anim) stopAnim(); return; }
+    const dir = down ? 1 : -1, p = rawProgress();
+    if (!canStep(dir, p)) { if (anim) stopAnim(); return; }
+    event.preventDefault();
+    if (!locked) stepChapter(dir);
+  });
+  // Native touch snapping: points at each chapter plus the start and end of the story.
+  const SNAP_AT = [0, ...CENTERS.slice(1), 1];
+  const snapPoints = SNAP_AT.map(() => { const el = document.createElement('i'); el.className = 'story-snap-point'; el.setAttribute('aria-hidden', 'true'); root.appendChild(el); return el; });
+  function placeSnapPoints() {
+    const span = root.offsetHeight - stage.offsetHeight;
+    snapPoints.forEach((el, i) => { el.style.top = Math.round(SNAP_AT[i] * span) + 'px'; });
+  }
+  function updateSnapZone() {
+    const p = rawProgress(), on = html.classList.contains('story-snap');
+    if (coarsePointer.matches && p > -0.01 && p < 0.998) { if (!on) html.classList.add('story-snap'); }
+    else if (on && (p <= -0.02 || p > 1.004 || !coarsePointer.matches)) html.classList.remove('story-snap');
+  }
+  document.querySelectorAll('a[href="#explore"]').forEach(link => link.addEventListener('click', () => { pauseSnap(1200); html.classList.remove('story-snap'); }));
+
   measure();
-  window.addEventListener('scroll', () => { kick(); armSnap(); }, { passive: true });
-  window.addEventListener('resize', () => { measure(); kick(); });
-  window.addEventListener('load', () => { measure(); kick(); });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { measure(); kick(); });
+  placeSnapPoints();
+  updateSnapZone();
+  window.addEventListener('scroll', () => { kick(); armSnap(); updateSnapZone(); }, { passive: true });
+  window.addEventListener('resize', () => { measure(); placeSnapPoints(); kick(); });
+  window.addEventListener('load', () => { measure(); placeSnapPoints(); kick(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { measure(); placeSnapPoints(); kick(); });
   document.addEventListener('visibilitychange', kick);
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(entries => { onScreen = entries[0].isIntersecting; if (onScreen) kick(); }, { rootMargin: '120px' }).observe(root);

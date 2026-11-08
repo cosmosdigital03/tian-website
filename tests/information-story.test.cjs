@@ -262,3 +262,14 @@ test('The revised artwork and typography introduce no remote fonts or presentati
     assert.doesNotMatch(resource, /^(?:https?:)?\/\//i, 'CSS asset must stay local: ' + resource);
   }
 });
+
+test('Hard scrolls hold one slide at a time while slow scrolling stays native', () => {
+  assert.match(storyJs, /addEventListener\('wheel'[\s\S]*passive: false/, 'Wheel handling must be able to hold a hard scroll');
+  assert.match(storyJs, /burst >= 320/, 'A hard burst is detected from the wheel speed');
+  assert.match(storyJs, /stepChapter\(dir\)/, 'A hard scroll or Page Down moves exactly one chapter');
+  assert.match(storyJs, /canStep/, 'Leaving the story at either end stays native');
+  assert.match(storyJs, /ArrowDown[\s\S]*PageDown/, 'Keyboard scrolling steps chapter by chapter');
+  assert.match(storyCss, /scroll-snap-stop\s*:\s*always/, 'Touch snapping must not skip a chapter');
+  assert.match(storyCss, /@media\(pointer:coarse\)\{html\.story-snap/, 'Native snapping applies to touch screens only');
+  assert.match(storyJs, /dt \* 0\.34/, 'The camera has a speed limit even when the scroll bar is dragged');
+});
