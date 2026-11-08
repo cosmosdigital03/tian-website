@@ -182,3 +182,30 @@ h1,h2,h3,.hero h1,.section-heading h2,.details-heading h2,.faq h2,.privacy-promi
 
 /* TIAN emblem in the site header and footer. */
 .brand-mark{display:grid;place-items:center;flex-shrink:0}.brand-logo{display:block;width:46px;height:46px;max-width:none;object-fit:contain}.footer .brand-logo{width:40px;height:40px}
+/* UI/UX refinement pass: touch targets, readable minimum text, clearer focus, hero label fit. */
+.text-link,.motion-toggle,.footer nav a,.mobile-nav a,.details-footnote .text-link,.comparison-context .text-link{min-height:44px}
+.text-link,.motion-toggle{align-items:center}
+.footer nav a{display:inline-flex;align-items:center}
+.questions summary,.footprint-more>summary{min-height:48px}
+.questions summary:hover{color:#eef6ff}
+.button:active{transform:translateY(0);box-shadow:0 0 18px #79bfff22}
+.button:focus-visible{outline-offset:4px}
+p a,.privacy-method a,.connection-note a,.details-disclosure a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.story-source-label{text-wrap:balance}
+@media(max-width:640px){
+  .story-source-label{font-size:12px;line-height:1.4;inset:6px 8px auto}
+  .main-nav a,.mobile-nav a{min-height:48px;display:flex;align-items:center}
+  .nav-toggle{width:48px;height:48px;padding:12px}
+  .hero .text-link{padding-block:4px}
+  .art-caption>span,.illustration-note,.details-badge,.details-card-label,.privacy-kicker,.route-stop small,.route-topline,.schematic-label,.privacy-promise .eyebrow,.closing .eyebrow,.closing-note,.footer .copyright,.comparison-note,.comparison-table td:before,.comparison-table th small{font-size:11px!important;line-height:1.6}
+  .details-card-label{white-space:normal}
+  .eyebrow,.section-heading .eyebrow,.details-heading .eyebrow,.faq-heading .eyebrow{font-size:11px}
+  .motion-toggle{font-size:12px;padding-inline:4px}
+  .network-details dt,.device-basics dt,.privacy-method,.privacy-method p,.network-note,.details-disclosure,.details-status,.privacy-signal-grid dd small,.network-details dd small,.device-basics dd small{font-size:11px}
+  .comparison-table td,.comparison-table tbody th{font-size:12px}
+  .details-footnote p{font-size:11px}
+}
+@media(min-width:641px){
+  .art-caption>span{font-size:10px}.illustration-note{font-size:10px}
+  .main-nav a{padding-block:12px}
+}
