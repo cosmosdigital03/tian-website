@@ -96,8 +96,8 @@ test('The homepage story names information roles, not a guaranteed-anonymity or 
   }
   const copy = text(story);
   assert.match(copy, /separates who you are from where you go/i);
-  assert.match(copy, /The Entry shield knows who you are\. The Exit shield knows where you are going\. Neither holds both/i);
-  assert.match(copy, /not a packet-by-packet path/i, 'The illustration must qualify itself');
+  assert.match(copy, /Two separate views/i);
+  assert.match(copy, /For your protection, the Entry shield knows who you are\. The Exit shield knows where you are going\. Neither holds both in one single place/i);
   assert.match(copy, /neither side holds the full picture/i);
   assert.doesNotMatch(copy, /(?:guaranteed|complete|total) anonymity|untraceable|impossible to (?:track|identify)/i);
   const canvas = byClass(story, 'story-canvas')[0];
