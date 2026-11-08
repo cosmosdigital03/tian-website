@@ -190,11 +190,12 @@
   net.map((n, i) => i).sort((a, b) => net[b].deg - net[a].deg).forEach(i => { if (hubs.length < 3 && hubs.every(h => len(sub(net[h].p, net[i].p)) > 12)) hubs.push(i); });
   const siteLabels = ['WEBSITES', 'APPS', 'SERVICES'];
   const act = new Float32Array(net.length);
+  const ringAge = new Float32Array(net.length).fill(9);
   const signals = [];
   const simRand = rng(97);
   let spawnIn = 0;
   function fire(node, gen, from = -1) {
-    act[node] = 1;
+    act[node] = 1; ringAge[node] = 0;
     const out = adj[node].filter(k => k !== from);
     for (let n = Math.min(out.length, gen === 0 ? 3 : 2); n > 0 && signals.length < 120; n--) {
       const k = out.splice(Math.floor(simRand() * out.length), 1)[0];
@@ -203,7 +204,7 @@
   }
   function stepNet(dt) {
     if (dt <= 0) return;
-    for (let i = 0; i < act.length; i++) act[i] *= Math.exp(-dt * 1.8);
+    for (let i = 0; i < act.length; i++) { act[i] *= Math.exp(-dt * 3.4); ringAge[i] += dt; }
     spawnIn -= dt;
     if (spawnIn <= 0) {
       spawnIn = 0.12 + simRand() * 0.22;
@@ -215,7 +216,7 @@
       if (s.u >= 1) {
         signals.splice(i, 1);
         const node = s.fwd ? e.b : e.a;
-        act[node] = 1;
+        act[node] = 1; ringAge[node] = 0;
         if (s.gen < 5 && simRand() < 0.82 - s.gen * 0.1) fire(node, s.gen + 1, s.e);
       }
     }
@@ -822,10 +823,16 @@
     roundedPath(g, 130, 756, 100, 5, 2.5); g.fillStyle = 'rgba(232,242,250,0.7)'; g.fill();
   }
 
-  function drawDevice(t, show) {
+  function drawDevice(t, show, p) {
     if (show < 0.01) return;
     const bob = Math.sin(t * 0.9) * 0.05;
-    const ry = -0.34 + Math.sin(t * 0.55) * 0.06, rx = 0.05;
+    // In the opening shot the phone is angled; through chapter 1 it turns to face the viewer.
+    const toCam = sub(cam.pos, DEVICE);
+    const faceYaw = Math.atan2(toCam[0], toCam[2]);
+    const faceTilt = -Math.asin(clamp(toCam[1] / (len(toCam) || 1), -0.6, 0.6)) * 0.9;
+    const turn = smooth(clamp((p - 0.08) / 0.1)) * (1 - smooth(clamp((p - 0.3) / 0.1)));
+    const ry = lerp(-0.34, faceYaw, turn) + Math.sin(t * 0.55) * 0.06 * (1 - turn * 0.8);
+    const rx = lerp(0.05, faceTilt, turn);
     const cyy = Math.cos(ry), syy = Math.sin(ry), cxx = Math.cos(rx), sxx = Math.sin(rx);
     const xf = (x, y, z) => {
       const y2 = y * cxx - z * sxx, z2 = y * sxx + z * cxx;
@@ -972,31 +979,40 @@
       list.forEach(([a, c, b]) => { ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo(c[0], c[1], b[0], b[1]); });
       ctx.stroke();
     });
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    // neurons: dim at rest, flaring when a signal arrives
+    // neurons: steady, crisp dots; a node that receives a signal flashes white and sends out a thin ring
     net.forEach((n, i) => {
       const q = P(n.p);
       if (!q) return;
       const k = near(n.p), a = act[i];
-      const tw = 0.7 + 0.3 * Math.sin(t * 1.1 + n.tw);
-      const r = clamp((0.055 + a * 0.09) * q[2], 0.8, 2.6);
-      if (a > 0.06) glow(q, clamp(q[2] * (0.3 + a * 0.7), 3, 20), n.colour, 0.75 * a * amt * (0.4 + k));
-      ctx.fillStyle = rgba(a > 0.3 ? COL.white : n.colour, clamp((0.25 + 0.55 * k) * tw + a, 0, 1) * amt);
+      const r = clamp((0.055 + a * 0.05) * q[2], 0.9, 2.8);
+      ctx.fillStyle = rgba(a > 0.25 ? COL.white : n.colour, clamp(0.5 + 0.4 * k + a * 0.5, 0, 1) * amt);
       ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, TAU); ctx.fill();
+      const age = ringAge[i];
+      for (let e = 0; e < 2; e++) {   // a ring and a fainter echo behind it
+        const ea = age - e * 0.16;
+        if (ea < 0 || ea >= 0.8) continue;
+        const f = ea / 0.8;
+        ctx.strokeStyle = rgba(n.colour, (1 - f) * (1 - f) * (e ? 0.5 : 0.95) * amt * (0.5 + k));
+        ctx.lineWidth = e ? 0.9 : 1.2;
+        ctx.beginPath(); ctx.arc(q[0], q[1], clamp((0.1 + f * 0.75) * q[2], 2.5, 26), 0, TAU); ctx.stroke();
+      }
     });
-    // signals travelling along the links, with short fading tails
+    // signals: a sharp bright head with a short straight tail along the link, no halo
     signals.forEach(s => {
       const e = edges[s.e], col = net[s.fwd ? e.b : e.a].colour;
-      for (let j = 0; j < 5; j++) {
-        const u = clamp(s.fwd ? s.u - j * 0.045 : 1 - s.u + j * 0.045);
-        if ((s.fwd && s.u - j * 0.045 < 0) || (!s.fwd && 1 - s.u + j * 0.045 > 1)) continue;
-        const q = P(edgeAt(e, u));
-        if (!q) continue;
-        const a = (1 - j / 5) * 0.95 * amt;
-        if (j === 0) glow(q, clamp(0.35 * q[2], 4, 14), col, 0.7 * amt);
-        ctx.fillStyle = rgba(COL.white, a * (j === 0 ? 1 : 0.55));
-        ctx.beginPath(); ctx.arc(q[0], q[1], clamp((j === 0 ? 0.1 : 0.07) * q[2], 0.9, 3), 0, TAU); ctx.fill();
+      const at = d => { const u = s.fwd ? s.u - d : 1 - s.u + d; return u < 0 || u > 1 ? null : P(edgeAt(e, u)); };
+      let prev = at(0);
+      if (!prev) return;
+      for (let j = 1; j <= 5; j++) {
+        const q = at(j * 0.04);
+        if (!q) break;
+        ctx.strokeStyle = rgba(col, (1 - j / 6) * 0.9 * amt); ctx.lineWidth = 1.6 - j * 0.2;
+        ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+        prev = q;
       }
+      const h = at(0);
+      ctx.fillStyle = rgba(COL.white, amt);
+      ctx.beginPath(); ctx.arc(h[0], h[1], clamp(0.09 * h[2], 1.2, 2.8), 0, TAU); ctx.fill();
     });
     // the Destination Shield feeding the network
     targets.forEach((idx, k) => {
@@ -1010,18 +1026,20 @@
       polyline(pts, COL.mint, 0.3 * amt, 1);
       const f = (t * 0.28 + k / targets.length) % 1;
       const q = P(pts[Math.floor(f * 16)]);
-      if (q) glow(q, Math.max(3, 0.3 * q[2]), COL.cyan, 0.85 * amt);
+      if (q) { ctx.fillStyle = rgba(COL.white, 0.95 * amt); ctx.beginPath(); ctx.arc(q[0], q[1], clamp(0.08 * q[2], 1.2, 2.6), 0, TAU); ctx.fill(); }
     });
-    // hubs
+    // hubs: a crisp double ring and a solid centre
     hubs.forEach(i => {
       const q = P(net[i].p);
       if (!q) return;
-      const a = 0.5 + 0.5 * Math.sin(t * 1.6 + net[i].tw);
-      glow(q, clamp(0.9 * q[2], 8, 30), COL.mint, (0.3 + 0.2 * a) * amt);
-      ctx.strokeStyle = rgba(COL.mint, 0.75 * amt); ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(q[0], q[1], clamp(0.3 * q[2], 4, 12), 0, TAU); ctx.stroke();
+      const r = clamp(0.3 * q[2], 4, 12);
+      ctx.strokeStyle = rgba(COL.mint, 0.9 * amt); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = rgba(COL.mint, 0.4 * amt); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(q[0], q[1], r * 1.7, 0, TAU); ctx.stroke();
+      ctx.fillStyle = rgba(COL.white, amt);
+      ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(1.6, r * 0.28), 0, TAU); ctx.fill();
     });
-    ctx.restore();
     hubs.forEach((idx, k) => {
       const q = P(net[idx].p);
       if (!q) return;
@@ -1049,7 +1067,7 @@
     [
       { d: len(sub(EXIT, cam.pos)), run: () => drawShield(EXIT, COL.mint, t, showExit, 2, false) },
       { d: len(sub(ENTRY, cam.pos)), run: () => drawShield(ENTRY, COL.blue, t, showEntry, 0, true) },
-      { d: len(sub(DEVICE, cam.pos)), run: () => drawDevice(t, 1) }
+      { d: len(sub(DEVICE, cam.pos)), run: () => drawDevice(t, 1, p) }
     ].sort((a, b) => b.d - a.d).forEach(i => i.run());
 
     // information cards, placed in the free area and anchored to each shield
