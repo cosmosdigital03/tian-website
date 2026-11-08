@@ -10,7 +10,13 @@ No build step or third-party JavaScript dependencies are required. Serve the rep
 python3 -m http.server 8000
 ```
 
-The homepage uses `premium.css` and `app.js`. Support, privacy, and error pages retain the shared `styles.css` stylesheet. The header and footer use the supplied TIAN emblem. The Solving orb adapts Thinking Orbs under the MIT license; see `licenses/thinking-orbs-MIT.txt`. Fonts are supplied by the visitor's system. Headings use a retro-inspired system serif stack, with sans-serif body and interface text.
+## Pages
+
+- `index.html` is a scroll-driven story (device, Entry shield, two information views, Exit shield, open internet) drawn by `story.js` on a canvas with `story.css`. It is dependency-free, makes no network requests and stores nothing. With reduced motion, no JavaScript or no canvas, the same six chapters appear as stacked readable sections (`body.story-static`). The illustration shows what each shield can see, not a packet-by-packet path.
+- `how-it-works.html`, `footprint.html` (the automatic connection snapshot and its `connection-*.js` modules), `platforms.html` and `compare.html` (comparison plus FAQ) each open as their own page and use `premium.css` and `app.js`.
+- Support, privacy, terms and error pages retain the shared `styles.css` stylesheet and link to the pages above.
+
+The homepage uses `premium.css`, `story.css`, `app.js` and `story.js`. Support, privacy, and error pages retain the shared `styles.css` stylesheet. The header and footer use the supplied TIAN emblem. The Solving orb adapts Thinking Orbs under the MIT license; see `licenses/thinking-orbs-MIT.txt`. Fonts are supplied by the visitor's system. Headings use a retro-inspired system serif stack, with sans-serif body and interface text.
 
 The divided-picture animation shows distinct relay information views, not separate packet paths or payload reassembly. Both views remain inside one shared-service frame. Pause motion and reduced-motion preferences retain a clear static explanation.
 

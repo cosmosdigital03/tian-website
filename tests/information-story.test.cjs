@@ -45,6 +45,9 @@ function findAll(node, predicate) {
     [...(predicate(child) ? [child] : []), ...findAll(child, predicate)]);
 }
 const document = elements(html);
+const architecture = elements(fs.readFileSync(path.join(root, 'how-it-works.html'), 'utf8'));
+const storyCss = fs.readFileSync(path.join(root, 'story.css'), 'utf8');
+const storyJs = fs.readFileSync(path.join(root, 'story.js'), 'utf8');
 const hasClass = (node, name) => (node.attrs.class || '').split(/\s+/).includes(name);
 const byClass = (node, name) => findAll(node, child => hasClass(child, name));
 const text = node => node.children.map(child => typeof child === 'string' ? child : text(child)).join(' ').replace(/\s+/g, ' ').trim();
@@ -81,52 +84,38 @@ function keyframes(name) {
     .flatMap(([, stops, body]) => stops.split(',').map(stop => ({ offset: parseFloat(stop), body })));
 }
 
-test('The hero names information views, not a traffic-routing or reassembly diagram', () => {
-  const hero = byClass(document, 'hero-visual')[0];
-  assert.ok(hero, 'A hero illustration must be present');
-  const art = byClass(hero, 'information-story')[0];
-  assert.ok(art && art.tag === 'figure', 'The complete story must remain a named native figure');
-  const accessibleParts = (art.attrs['aria-labelledby'] || '').split(/\s+/).map(id =>
-    findAll(document, child => child.attrs.id === id)[0]);
-  assert.ok(accessibleParts.every(node => node && text(node)), 'Every figure label must resolve to readable text');
-  assert.ok(accessibleParts.some(node => node.tag === 'figcaption' && /information views/i.test(text(node))));
-  const descriptions = (art.attrs['aria-describedby'] || '').split(/\s+/).map(id =>
-    findAll(document, child => child.attrs.id === id)[0]);
-  assert.ok(descriptions.every(node => node && text(node)), 'Every figure description must resolve to readable text');
-  assert.ok(descriptions.some(node => /separate points of view/i.test(text(node))));
-  assert.ok(descriptions.some(node => /Two dedicated shield roles/i.test(text(node))));
-  const visibleCopy = findAll(hero, node => ['p', 'span'].includes(node.tag)).filter(node => {
-    for (let parent = node.parent; parent && parent !== hero; parent = parent.parent) {
-      if (parent.tag === 'svg') return false;
-    }
-    return true;
-  }).map(text).join(' ');
-  assert.match(visibleCopy, /Two dedicated shield roles/i,
-    'The key qualification must be visible outside decorative artwork');
-  assert.match(visibleCopy, /neither side holds the full picture/i);
-  assert.doesNotMatch(text(hero), /(?:guaranteed|complete|total) anonymity|untraceable|impossible to (?:track|identify)/i);
+test('The homepage story names information roles, not a guaranteed-anonymity or packet-routing claim', () => {
+  const story = byClass(document, 'story')[0];
+  assert.ok(story && story.attrs['data-story'] !== undefined, 'The scroll story must be present');
+  const chapters = byClass(story, 'chapter');
+  assert.equal(chapters.length, 6, 'Device, Leaving, Entry, Two views, Exit and Open internet');
+  assert.equal(findAll(document, node => node.tag === 'h1').length, 1);
+  for (const chapter of chapters) {
+    const labelled = findAll(document, node => node.attrs.id === chapter.attrs['aria-labelledby'])[0];
+    assert.ok(labelled && text(labelled), 'Every chapter heading must resolve to readable text');
+  }
+  const copy = text(story);
+  assert.match(copy, /separates who you are from where you go/i);
+  assert.match(copy, /Two separate views/i);
+  assert.match(copy, /For your protection, the Entry shield knows who you are\. The Exit shield knows where you are going\. Neither holds both in one single place/i);
+  assert.match(copy, /neither side holds the full picture/i);
+  assert.doesNotMatch(copy, /(?:guaranteed|complete|total) anonymity|untraceable|impossible to (?:track|identify)/i);
+  const canvas = byClass(story, 'story-canvas')[0];
+  assert.equal(canvas.tag, 'canvas');
+  assert.equal(canvas.attrs['aria-hidden'], 'true', 'Decorative canvas must not duplicate the chapter text');
+  assert.equal(byClass(story, 'story-dot').length, 6, 'One keyboard-reachable control per chapter');
+  assert.ok(findAll(story, node => node.attrs.href === '#explore').length === 1, 'A skip link must leave the story');
 });
 
-test('Two labeled picture halves remain distinct from the Entry and Exit knowledge wells', () => {
-  const story = byClass(document, 'information-story')[0];
-  assert.equal(byClass(story, 'information-piece').length, 2);
-  assert.equal(byClass(story, 'knowledge-well').length, 2);
-  assert.equal(byClass(story, 'service-frame').length, 1);
-  assert.equal(byClass(story, 'story-divider').length, 1, 'A settled service frame must keep a visible knowledge boundary');
-  for (const [pieceName, label] of [['identity-piece', /IDENTITY.*Your IP/], ['destination-piece', /DESTINATION.*Destination/]]) {
-    const pieces = byClass(story, pieceName);
-    assert.equal(pieces.length, 1);
-    assert.match(text(pieces[0]), label);
-    assert.equal(findAll(pieces[0], child => child.tag === 'img').length, 1, 'Each information card retains its own picture half');
-    assert.equal(byClass(pieces[0], 'piece-picture')[0].attrs['aria-hidden'], 'true', 'Decorative picture halves must not duplicate the text labels');
-  }
-  assert.match(text(byClass(story, 'well-entry')[0]), /ENTRY VIEW.*connecting IP.*Destination stays private/i);
-  assert.match(text(byClass(story, 'well-exit')[0]), /EXIT VIEW.*destination.*Personal IP stays hidden/i);
-  for (const node of [...byClass(story, 'information-piece'), ...byClass(story, 'knowledge-well')]) {
-    for (let ancestor = node; ancestor; ancestor = ancestor.parent) {
-      assert.equal(Object.hasOwn(ancestor.attrs, 'hidden'), false);
-      assert.notEqual(ancestor.attrs['aria-hidden'], 'true', 'Information labels remain available without motion or JavaScript');
-    }
+test('The story ships its own readable fallback and stays dependency-free', () => {
+  assert.match(storyCss, /body\.story-static\s+\.story\s*,\s*body:not\(\.js-enabled\)\s+\.story\s*\{[^}]*height\s*:\s*auto/);
+  assert.match(storyCss, /body\.story-static\s+\.story-canvas/);
+  assert.match(storyJs, /prefers-reduced-motion: reduce/);
+  assert.match(storyJs, /story-static/);
+  assert.doesNotMatch(storyJs, /https?:\/\/|\bimport\b|\bfetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|indexedDB|document\.cookie|WebSocket|sendBeacon/);
+  assert.doesNotMatch(storyCss, /@import|url\(\s*['"]?https?:/);
+  for (const name of ['story.css', 'story.js']) {
+    assert.match(html, new RegExp(name.replace('.', '\\.') + '\\?v='), name + ' must be linked from the homepage');
   }
 });
 
@@ -208,27 +197,24 @@ test('Pausing or reducing motion leaves the separated story readable', () => {
 });
 
 test('The architecture section distinguishes Entry and Exit shield roles clearly', () => {
-  const comparison = byClass(document, 'knowledge-comparison')[0];
+  const comparison = byClass(architecture, 'knowledge-comparison')[0];
   assert.ok(comparison);
   const cards = byClass(comparison, 'knowledge-card');
   assert.equal(cards.length, 2);
   assert.match(text(cards[0]), /ENTRY SHIELD.*Connecting IP.*Protected at entry.*Browsing destination.*Kept private/i);
   assert.match(text(cards[1]), /EXIT SHIELD.*Destination connections.*Handled cleanly onward.*Your personal IP.*Never visible/i);
-  const transport = byClass(document, 'transport-caption')[0];
+  const transport = byClass(architecture, 'transport-caption')[0];
   assert.match(text(transport), /Identity Shield protects your personal IP/i);
   assert.match(text(transport), /Destination Shield connects you onward/i);
-  assert.equal(byClass(document, 'route-map').length, 0);
-  const boundary = text(byClass(document, 'architecture-boundary')[0]);
+  assert.equal(byClass(architecture, 'route-map').length, 0);
+  const boundary = text(byClass(architecture, 'architecture-boundary')[0]);
   assert.match(boundary, /zero browsing-history or DNS-query logs/i);
 });
 
-test('The hero no longer depicts serial shields or animated payload routing', () => {
-  const hero = byClass(document, 'hero-visual')[0];
-  for (const name of ['gate-entry', 'gate-exit', 'art-packet']) {
-    assert.equal(byClass(hero, name).length, 0, 'Old traffic illustration class must not remain: ' + name);
+test('The homepage no longer carries the retired serial-shield hero illustration', () => {
+  for (const name of ['hero-visual', 'gate-entry', 'gate-exit', 'art-packet', 'information-story']) {
+    assert.equal(byClass(document, name).length, 0, 'Retired illustration class must not remain on the homepage: ' + name);
   }
-  assert.equal(findAll(hero, node => node.tag === 'animatemotion').length, 0,
-    'Moving information cards must not become a payload following a traffic path');
 });
 
 test('Headings use bold modern system display type while body text stays sans-serif', () => {
@@ -275,4 +261,24 @@ test('The revised artwork and typography introduce no remote fonts or presentati
   for (const [, resource] of css.matchAll(/url\(\s*["']?([^)'"\s]+)["']?\s*\)/g)) {
     assert.doesNotMatch(resource, /^(?:https?:)?\/\//i, 'CSS asset must stay local: ' + resource);
   }
+});
+
+test('Hard scrolls hold one slide at a time while slow scrolling stays native', () => {
+  assert.match(storyJs, /addEventListener\('wheel'[\s\S]*passive: false/, 'Wheel handling must be able to hold a hard scroll');
+  assert.match(storyJs, /burst >= 280/, 'A hard burst is detected from the wheel speed');
+  assert.match(storyJs, /stepChapter\(dir\)/, 'A hard scroll or Page Down moves exactly one chapter');
+  assert.match(storyJs, /canStep/, 'Leaving the story at either end stays native');
+  assert.match(storyJs, /ArrowDown[\s\S]*PageDown/, 'Keyboard scrolling steps chapter by chapter');
+  assert.match(storyCss, /scroll-snap-stop\s*:\s*always/, 'Touch snapping must not skip a chapter');
+  assert.match(storyCss, /@media\(pointer:coarse\)\{html\.story-snap/, 'Native snapping applies to touch screens only');
+  assert.match(storyJs, /dt \* 0\.9/, 'The camera has a speed limit even when the scroll bar is dragged');
+});
+
+test('A gentle gravity eases the page onto a nearby slide and leaves the middle alone', () => {
+  assert.match(storyJs, /GRAVITY_REACH/, 'The pull has a limited reach, so the middle of each gap is a dead zone');
+  assert.match(storyJs, /if \(d >= GRAVITY_REACH\) return;/, 'Outside the reach nothing moves');
+  assert.match(storyJs, /closeness \* closeness/, 'The pull grows smoothly as the page nears a slide');
+  assert.match(storyJs, /1 - Math\.exp\(-rate \* dt\)/, 'The approach is an exponential glide, never a snap');
+  assert.match(storyJs, /now - lastInput - 150/, 'The pull only starts after the user stops scrolling');
+  assert.match(storyJs, /FACE_YAW[\s\S]*FACE_TILT/, 'The phone holds a fixed facing pose after slide 01');
 });
