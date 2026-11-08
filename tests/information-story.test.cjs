@@ -273,3 +273,12 @@ test('Hard scrolls hold one slide at a time while slow scrolling stays native', 
   assert.match(storyCss, /@media\(pointer:coarse\)\{html\.story-snap/, 'Native snapping applies to touch screens only');
   assert.match(storyJs, /dt \* 0\.9/, 'The camera has a speed limit even when the scroll bar is dragged');
 });
+
+test('A gentle gravity eases the page onto a nearby slide and leaves the middle alone', () => {
+  assert.match(storyJs, /GRAVITY_REACH/, 'The pull has a limited reach, so the middle of each gap is a dead zone');
+  assert.match(storyJs, /if \(d >= GRAVITY_REACH\) return;/, 'Outside the reach nothing moves');
+  assert.match(storyJs, /closeness \* closeness/, 'The pull grows smoothly as the page nears a slide');
+  assert.match(storyJs, /1 - Math\.exp\(-rate \* dt\)/, 'The approach is an exponential glide, never a snap');
+  assert.match(storyJs, /now - lastInput - 150/, 'The pull only starts after the user stops scrolling');
+  assert.match(storyJs, /FACE_YAW[\s\S]*FACE_TILT/, 'The phone holds a fixed facing pose after slide 01');
+});

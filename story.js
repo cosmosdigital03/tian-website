@@ -626,6 +626,10 @@
     });
   }
 
+  // Direction from the phone to the slide 01 camera, measured once: the phone's facing pose.
+  const FACE_DIR = sub(hermite(0.2, k => k.pos), DEVICE);
+  const FACE_YAW = Math.atan2(FACE_DIR[0], FACE_DIR[2]);
+  const FACE_TILT = -Math.asin(clamp(FACE_DIR[1] / (len(FACE_DIR) || 1), -0.6, 0.6)) * 0.9;
   // ---- the phone ----------------------------------------------------------------------
   const PH = { w: 1.38, h: 2.82, d: 0.17, r: 0.3, bezel: 0.06 };
   const outline = (hw, hh, r, seg = 8) => {
@@ -826,13 +830,11 @@
   function drawDevice(t, show, p) {
     if (show < 0.01) return;
     const bob = Math.sin(t * 0.9) * 0.05;
-    // In the opening shot the phone is angled; through chapter 1 it turns to face the viewer.
-    const toCam = sub(cam.pos, DEVICE);
-    const faceYaw = Math.atan2(toCam[0], toCam[2]);
-    const faceTilt = -Math.asin(clamp(toCam[1] / (len(toCam) || 1), -0.6, 0.6)) * 0.9;
-    const turn = smooth(clamp((p - 0.08) / 0.1)) * (1 - smooth(clamp((p - 0.3) / 0.1)));
-    const ry = lerp(-0.34, faceYaw, turn) + Math.sin(t * 0.55) * 0.06 * (1 - turn * 0.8);
-    const rx = lerp(0.05, faceTilt, turn);
+    // Opening shot: angled. Through slide 01 it turns to face the viewer, then holds that pose
+    // (it no longer follows the camera as the camera moves on toward slide 02).
+    const turn = smooth(clamp((p - 0.06) / 0.14));
+    const ry = lerp(-0.34, FACE_YAW, turn) + Math.sin(t * 0.55) * 0.06 * (1 - turn * 0.8);
+    const rx = lerp(0.05, FACE_TILT, turn);
     const cyy = Math.cos(ry), syy = Math.sin(ry), cxx = Math.cos(rx), sxx = Math.sin(rx);
     const xf = (x, y, z) => {
       const y2 = y * cxx - z * sxx, z2 = y * sxx + z * cxx;
@@ -1218,21 +1220,47 @@
   function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
 
   // Gentle magnet: when scrolling stops close to a chapter, ease onto it.
-  let touching = false, snapTimer = 0, snapping = false;
-  const snapCheck = () => {
-    if (touching || snapping) return;
-    const p = readProgress();
-    if (p < 0.012 || p > 0.985) return;
+  // Gentle gravity: once scrolling stops, a slide close by draws the page in slowly, like a liquid
+  // settling. The middle of the space between two slides is a dead zone that is never touched.
+  // The pull grows with closeness (zero at the edge of the zone, strongest at the slide) and is a
+  // smooth exponential approach, so it never snaps, overshoots or fights the user.
+  let touching = false, magnetRaf = 0, magnetLast = 0, lastInput = 0, lastSetY = -1;
+  const GRAVITY_REACH = 0.058;   // progress either side of a slide (about 30% of the gap to the next)
+  const GRAVITY_RATE = 4.2;      // per second at the very centre
+  const noteInput = () => { lastInput = performance.now(); };
+  function magnetTick(now) {
+    magnetRaf = 0;
+    const dt = Math.min(0.05, Math.max(0.001, (now - magnetLast) / 1000));
+    magnetLast = now;
+    if (anim || locked || touching || coarsePointer.matches) return;
+    const p = rawProgress();
+    if (p < 0.004 || p > 0.995) return;
     let best = 0;
-    CENTERS.forEach((c, i) => { if (Math.abs(c - p) < Math.abs(CENTERS[best] - p)) best = i; });
-    const d = Math.abs(CENTERS[best] - p);
-    if (d > 0.004 && d < 0.035) {
-      snapping = true;
-      goTo(best);
-      setTimeout(() => { snapping = false; }, 600);
+    STEPS.forEach((c, i) => { if (Math.abs(c - p) < Math.abs(STEPS[best] - p)) best = i; });
+    const d = Math.abs(STEPS[best] - p);
+    if (d >= GRAVITY_REACH) return;                       // dead zone: nothing to do
+    const span = root.offsetHeight - stage.offsetHeight;
+    const gap = (STEPS[best] - p) * span;                 // pixels still to travel
+    if (Math.abs(gap) > 0.6) {
+      const ramp = smooth(clamp((now - lastInput - 150) / 380));   // starts easing in after a short rest
+      const closeness = 1 - d / GRAVITY_REACH;
+      const rate = GRAVITY_RATE * closeness * closeness * ramp;
+      if (rate > 0.001) {
+        let step = gap * (1 - Math.exp(-rate * dt));
+        if (Math.abs(step) < 0.35) step = Math.sign(gap) * Math.min(Math.abs(gap), 0.35);
+        const y = window.scrollY + step;
+        lastSetY = y;
+        window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+      }
     }
+    magnetRaf = requestAnimationFrame(magnetTick);
+  }
+  const armSnap = () => {
+    // Our own nudges also raise scroll events; only a real change of position counts as the user.
+    if (Math.abs(window.scrollY - lastSetY) > 1.5) noteInput();
+    if (!magnetRaf) { magnetLast = performance.now(); magnetRaf = requestAnimationFrame(magnetTick); }
   };
-  const armSnap = () => {};   // no idle magnet: it made slow wheel scrolling feel floaty
+  ['wheel', 'keydown', 'pointerdown', 'touchstart'].forEach(type => window.addEventListener(type, noteInput, { passive: true }));
   window.addEventListener('touchstart', () => { touching = true; }, { passive: true });
   window.addEventListener('touchend', () => { touching = false; armSnap(); }, { passive: true });
   window.addEventListener('touchcancel', () => { touching = false; armSnap(); }, { passive: true });
