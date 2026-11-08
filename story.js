@@ -75,15 +75,15 @@
     { p: 0.68, pos: [12, 3, -24], look: [3.5, -0.4, -32] },
     { p: 0.73, pos: [7.5, 1.4, -26], look: [3.2, -0.3, -34] },
     { p: 0.79, pos: [7, 1.2, -26.5], look: [3.4, -0.4, -34] },
-    { p: 0.87, pos: [9, 6, -22], look: [1, -12, -50] },
-    { p: 0.93, pos: [4, 20, 17], look: [0, -17, -55] },
-    { p: 1.00, pos: [-2.5, 23, 24], look: [0, -17, -55] }
+    { p: 0.87, pos: [7, -3, -38], look: [1, -11, -48] },
+    { p: 0.93, pos: [3, -3, -15], look: [0, -16, -53] },
+    { p: 1.00, pos: [-2, -4, -13], look: [0, -16.5, -53] }
   ];
   const CENTERS = [0.04, 0.22, 0.385, 0.56, 0.74, 0.92];
-  const SHIFT_X = [0.2, -0.2, 0.17, -0.2, 0.2, -0.17];
+  const SHIFT_X = [0.2, -0.2, 0.17, -0.2, 0.2, -0.16];
   const SHIFT_Y = [0, 0, 0, 0, 0, 0.06];
   const NARROW_Y = [-0.26, -0.15, -0.15, -0.15, -0.15, -0.2];
-  const RANGES = [0.14, 0.3, 0.47, 0.65, 0.83];
+  const RANGES = [0.12, 0.3, 0.47, 0.65, 0.83];
 
   function hermite(p, pick) {
     let i = 0;
@@ -145,18 +145,18 @@
   const stars = Array.from({ length: 260 }, () => ({ p: [lerp(-70, 70, rand()), lerp(-45, 22, rand()), lerp(-95, 18, rand())], s: lerp(0.5, 1.5, rand()), a: lerp(0.35, 1, rand()) }));
   // Open internet: a clustered network of nodes joined by curved links. Signals fire along the links
   // and light each node they reach, cascading onward like activity in a brain.
-  // A clean grid: three rows of nodes on two layers, evenly spaced with a little jitter,
-  // each joined to its neighbours. Far from the camera it reads as an orderly network.
-  const COLS = 13, ROWS = 5, LAYER_Y = [-19, -14];
+  // Open internet: a clustered network of nodes joined by curved links. Signals fire along the links
+  // and light each node they reach, cascading onward like activity in a brain. Nodes keep a minimum
+  // distance apart so no two dots sit on top of each other.
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(TAU * rand());
+  const NET_CENTER = [0, -16.5, -53];
+  const clusterCentres = Array.from({ length: 11 }, () => [NET_CENTER[0] + gauss() * 13, NET_CENTER[1] + gauss() * 3.6, NET_CENTER[2] + gauss() * 5.2]);
   const NET_COLOURS = [COL.blue, COL.cyan, COL.mint];
   const net = [];
-  const gridIndex = (c, r, l) => (l * ROWS + r) * COLS + c;
-  for (let l = 0; l < LAYER_Y.length; l++) {
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        net.push({ p: [(c - (COLS - 1) / 2) * 3.8 + (rand() - 0.5) * 0.9, LAYER_Y[l] + (rand() - 0.5) * 0.8, -64 + r * 5.2 + (rand() - 0.5) * 0.9], tw: rand() * TAU, c, colour: NET_COLOURS[(c + r) % 3], deg: 0 });
-      }
-    }
+  for (let guard = 0; net.length < 150 && guard < 8000; guard++) {
+    const c = net.length % clusterCentres.length, cc = clusterCentres[c];
+    const p = [cc[0] + gauss() * 4.8, cc[1] + gauss() * 2.8, cc[2] + gauss() * 4.4];
+    if (net.every(n => len(sub(n.p, p)) > 2.8)) net.push({ p, tw: rand() * TAU, c, colour: NET_COLOURS[c % 3], deg: 0 });
   }
   const edges = [];
   const edgeKey = new Set();
@@ -164,20 +164,19 @@
     const key = i < j ? i * 1000 + j : j * 1000 + i;
     if (i === j || edgeKey.has(key)) return;
     edgeKey.add(key);
-    const a = net[i].p, b = net[j].p, m = mix(a, b, 0.5);
-    edges.push({ a: i, b: j, ctrl: m, len: len(sub(b, a)) });
+    const a = net[i].p, b = net[j].p, m = mix(a, b, 0.5), d = sub(b, a), l = len(d) || 1;
+    const side = norm(cross(d, [0, 1, 0]));
+    const bend = mul(side, (rand() - 0.5) * l * 0.3);
+    edges.push({ a: i, b: j, ctrl: [m[0] + bend[0], m[1] + bend[1] + (rand() - 0.5) * l * 0.18, m[2] + bend[2]], len: l });
     net[i].deg++; net[j].deg++;
   };
-  for (let l = 0; l < LAYER_Y.length; l++) {
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const i = gridIndex(c, r, l);
-        if (c + 1 < COLS) addEdge(i, gridIndex(c + 1, r, l));
-        if (r + 1 < ROWS) addEdge(i, gridIndex(c, r + 1, l));
-        if (c + 1 < COLS && r + 1 < ROWS && rand() < 0.22) addEdge(i, gridIndex(c + 1, r + 1, l));
-        if (l === 0 && rand() < 0.3) addEdge(i, gridIndex(c, r, 1));
-      }
-    }
+  net.forEach((n, i) => {
+    net.map((m, j) => ({ j, d: len(sub(n.p, m.p)) })).filter(o => o.j !== i).sort((x, y) => x.d - y.d).slice(0, 3).forEach(o => addEdge(i, o.j));
+  });
+  for (let k = 0; k < 26; k++) {
+    const i = Math.floor(rand() * net.length);
+    const near = net.map((m, j) => ({ j, d: len(sub(net[i].p, m.p)) })).filter(o => o.j !== i && o.d > 8 && o.d < 16);
+    if (near.length) addEdge(i, near[Math.floor(rand() * near.length)].j);
   }
   const adj = net.map(() => []);
   edges.forEach((e, k) => { adj[e.a].push(k); adj[e.b].push(k); });
@@ -187,7 +186,8 @@
   };
   const EXIT_POINT = [EXIT[0] + 0.4, EXIT[1] - 0.8, EXIT[2] - 2.6];
   const targets = net.map((n, i) => ({ i, d: len(sub(n.p, EXIT_POINT)) })).sort((a, b) => a.d - b.d).slice(0, 7).map(o => o.i);
-  const hubs = [gridIndex(3, 3, 1), gridIndex(8, 1, 1), gridIndex(12, 3, 1)];
+  const hubs = [];
+  net.map((n, i) => i).sort((a, b) => net[b].deg - net[a].deg).forEach(i => { if (hubs.length < 3 && hubs.every(h => len(sub(net[h].p, net[i].p)) > 12)) hubs.push(i); });
   const siteLabels = ['WEBSITES', 'APPS', 'SERVICES'];
   const act = new Float32Array(net.length);
   const signals = [];
@@ -270,8 +270,6 @@
   function pose(p) {
     let pos0 = hermite(p, k => k.pos);
     const look = hermite(p, k => k.look);
-    // On phones the far view of the final network comes in closer so the grid stays readable.
-    if (narrow) pos0 = add(look, mul(sub(pos0, look), lerp(1, 0.62, smooth(clamp((p - 0.8) / 0.1)))));
     let i = 0;
     while (i < CENTERS.length - 2 && p > CENTERS[i + 1]) i++;
     const t = smooth(clamp((p - CENTERS[i]) / (CENTERS[i + 1] - CENTERS[i])));
@@ -280,8 +278,8 @@
     if (narrow) { sx = 0; sy = lerp(NARROW_Y[i], NARROW_Y[i + 1], t); }
     const cx0 = W / 2 + sx * W, cy0 = H / 2 + sy * H;
     const weights = [
-      1 - smooth(clamp((p - 0.08) / 0.08)),
-      0,
+      1 - smooth(clamp((p - 0.05) / 0.07)),
+      smooth(clamp((p - 0.1) / 0.06)) * (1 - smooth(clamp((p - 0.25) / 0.07))),
       smooth(clamp((p - 0.26) / 0.08)) * (1 - smooth(clamp((p - 0.42) / 0.08))),
       smooth(clamp((p - 0.42) / 0.08)) * (1 - smooth(clamp((p - 0.60) / 0.08))),
       smooth(clamp((p - 0.60) / 0.08)) * (1 - smooth(clamp((p - 0.80) / 0.07)))
@@ -290,7 +288,8 @@
     const scale = total > 1 ? 1 / total : 1;
     let pos = [0, 0, 0], cx = 0, cy = 0, used = 0;
     const fits = [
-      () => fitNode(pos0, look, DEVICE, 1.9, free[0]), null,
+      () => fitNode(pos0, look, DEVICE, 1.9, free[0]),
+      () => fitNode(pos0, look, DEVICE, 2.7, free[1]),
       () => fitNode(pos0, look, ENTRY, 3.1, free[2]),
       () => fitTwo(pos0, look, ENTRY, EXIT, free[3]),
       () => fitNode(pos0, look, EXIT, 3.1, free[4])
@@ -955,7 +954,7 @@
   function drawInternet(p, t) {
     const amt = smooth(clamp((p - 0.7) / 0.14));
     if (amt <= 0.01) return;
-    const near = pt => clamp(1.15 - len(sub(pt, cam.pos)) / 95);
+    const near = pt => clamp(1 - len(sub(pt, cam.pos)) / 78);
     // links, batched by brightness so each batch is one stroke
     const buckets = [[], [], [], []];
     edges.forEach(e => {
@@ -968,7 +967,7 @@
     ctx.lineWidth = 1;
     buckets.forEach((list, i) => {
       if (!list.length) return;
-      ctx.strokeStyle = rgba(COL.cyan, (0.1 + i * 0.07) * amt);
+      ctx.strokeStyle = rgba(COL.cyan, (0.05 + i * 0.06) * amt);
       ctx.beginPath();
       list.forEach(([a, c, b]) => { ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo(c[0], c[1], b[0], b[1]); });
       ctx.stroke();
@@ -980,9 +979,9 @@
       if (!q) return;
       const k = near(n.p), a = act[i];
       const tw = 0.7 + 0.3 * Math.sin(t * 1.1 + n.tw);
-      const r = clamp((0.075 + a * 0.1) * q[2], 1, 3);
-      if (a > 0.08) glow(q, clamp(q[2] * (0.25 + a * 0.5), 3, 14), n.colour, 0.7 * a * amt * (0.5 + k));
-      ctx.fillStyle = rgba(a > 0.3 ? COL.white : n.colour, clamp((0.38 + 0.5 * k) * tw + a, 0, 1) * amt);
+      const r = clamp((0.055 + a * 0.09) * q[2], 0.8, 2.6);
+      if (a > 0.06) glow(q, clamp(q[2] * (0.3 + a * 0.7), 3, 20), n.colour, 0.75 * a * amt * (0.4 + k));
+      ctx.fillStyle = rgba(a > 0.3 ? COL.white : n.colour, clamp((0.25 + 0.55 * k) * tw + a, 0, 1) * amt);
       ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, TAU); ctx.fill();
     });
     // signals travelling along the links, with short fading tails
@@ -1043,9 +1042,8 @@
     drawInternet(p, t);
     drawFans(p, t);
     drawPathLine();
-    const away = smooth(clamp((p - 0.8) / 0.1));
-    const showEntry = smooth(clamp((p - 0.1) / 0.14)) * (1 - 0.92 * away);
-    const showExit = smooth(clamp((p - 0.28) / 0.2)) * (1 - 0.6 * away);
+    const showEntry = smooth(clamp((p - 0.24) / 0.1));
+    const showExit = smooth(clamp((p - 0.28) / 0.2));
     drawPulses(t, 1 - smooth(clamp((p - 0.14) / 0.1)));
     drawPackets(t);
     [

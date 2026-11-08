@@ -1,7 +1,7 @@
 /* TIAN homepage: scroll-driven architecture story. Uses the existing premium.css palette. */
 :root{--header-h:97px}
-.story{position:relative;height:640vh;background:#050b14}
-@supports (height:1svh){.story{height:640svh}}
+.story{position:relative;height:520vh;background:#050b14}
+@supports (height:1svh){.story{height:520svh}}
 .story-sticky{position:sticky;top:var(--header-h);height:calc(100vh - var(--header-h));height:calc(100svh - var(--header-h));overflow:hidden;background:radial-gradient(ellipse 80% 70% at 72% 28%,#0f2441 0%,#08142a 48%,#040913 100%)}
 .story-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .story-vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(4,9,19,.78) 0%,rgba(4,9,19,.28) 38%,transparent 62%),radial-gradient(ellipse 120% 100% at 50% 50%,transparent 55%,rgba(2,5,12,.7) 100%)}
@@ -68,7 +68,7 @@ body.story-static .chapter h1,body.story-static .chapter h2,body:not(.js-enabled
 @media(max-width:850px){:root{--header-h:81px}}
 @media(max-width:640px){
   :root{--header-h:76px}
-  .story{height:560svh}
+  .story{height:470svh}
   .story-vignette,.story[data-chapter="1"] .story-vignette,.story[data-chapter="3"] .story-vignette,.story[data-chapter="5"] .story-vignette{background:linear-gradient(0deg,rgba(4,9,19,.96) 0%,rgba(4,9,19,.82) 34%,transparent 62%),radial-gradient(ellipse 120% 100% at 50% 40%,transparent 60%,rgba(2,5,12,.6) 100%)}
   .chapter,.chapter[data-side="left"],.chapter[data-side="right"]{top:auto;left:20px;right:20px;bottom:64px;width:auto;transform:translateY(24px)}
   .chapter.is-active{transform:none}
