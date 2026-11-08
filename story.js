@@ -1,7 +1,8 @@
 /* TIAN homepage: scroll-driven architecture story.
    Dependency-free canvas 2D with a small perspective projection. Scroll position is the
    only input; the camera flies Device -> Entry -> Exit -> open internet. The scene shows
-   information roles (what each shield can see), not packet-by-packet routing. */
+   information roles (what each shield can see), not packet-by-packet routing. Each chapter
+   is framed in the part of the screen the text leaves free, so words never sit behind a shield. */
 (() => {
   'use strict';
   const root = document.querySelector('[data-story]');
@@ -22,12 +23,15 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const smooth = t => t * t * (3 - 2 * t);
   const fade = (p, a, b, e) => smooth(clamp((p - a) / e)) * smooth(clamp((b - p) / e));
-  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
-  const COL = { blue: [126, 200, 255], mint: [100, 244, 172], ice: [205, 234, 255], cyan: [92, 225, 230] };
+  const rgba = (c, a) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
+  const COL = { blue: [126, 200, 255], mint: [100, 244, 172], ice: [205, 234, 255], cyan: [92, 225, 230], white: [255, 255, 255] };
+  const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  const SANS = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif';
 
   // ---- vector helpers -------------------------------------------------------------
   const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
   const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const len = a => Math.hypot(a[0], a[1], a[2]);
@@ -47,6 +51,7 @@
   const DEVICE = [0, 0.15, 0];
   const ENTRY = [-2.5, 0.2, -16];
   const EXIT = [3.5, -0.4, -34];
+  const GROUND = -3.2;
   const CONTROL = [
     [0.2, 0.9, -0.7], [0, 1.7, -2.6], [-0.6, 1.2, -7], [-1.6, 0.3, -12], ENTRY, [0.4, 0, -25], EXIT,
     [4.4, -3.4, -40], [2.2, -9, -46], [0, -13.5, -50]
@@ -55,7 +60,8 @@
   const EXIT_INDEX = 6;
 
   // Camera keyframes. Positions and look targets are blended with a non-uniform cardinal spline so
-  // the camera keeps moving between chapters while dwelling near each chapter's subject.
+  // the camera keeps moving between chapters. Chapters that need a precise composition are then
+  // refined by fitting (see pose) so the subject lands in the area the text leaves free.
   const KEYS = [
     { p: 0.00, pos: [0.5, 0.9, 7.5], look: [0, 0.1, 0] },
     { p: 0.08, pos: [0.2, 0.8, 6.8], look: [0, 0.2, -0.3] },
@@ -73,9 +79,8 @@
     { p: 0.93, pos: [5, -8, -36], look: [0, -15, -50] },
     { p: 1.00, pos: [2, -9.5, -34], look: [0, -16, -52] }
   ];
-  // Horizontal lens shift per chapter so the subject sits opposite the text.
   const CENTERS = [0.04, 0.22, 0.385, 0.56, 0.74, 0.92];
-  const SHIFT_X = [0.2, -0.2, 0.17, -0.25, 0.2, 0];
+  const SHIFT_X = [0.2, -0.2, 0.17, -0.2, 0.2, 0];
   const SHIFT_Y = [0, 0, 0, 0, 0, 0.06];
   const NARROW_Y = [-0.26, -0.15, -0.15, -0.15, -0.15, -0.1];
   const RANGES = [0.14, 0.3, 0.47, 0.65, 0.83];
@@ -152,31 +157,89 @@
   // ---- camera ---------------------------------------------------------------------
   const NEAR = 0.35;
   const cam = { pos: [0, 0, 8], r: [1, 0, 0], u: [0, 1, 0], f: [0, 0, -1], focal: 700, cx: 0, cy: 0 };
-  let W = 0, H = 0, dpr = 1, narrow = false, tagAmt = 1;
+  let W = 0, H = 0, dpr = 1, narrow = false;
+  const free = [];   // per chapter: the rectangle the text leaves free for the scene
 
-  function pose(p) {
-    cam.pos = hermite(p, k => k.pos);
-    const look = hermite(p, k => k.look);
-    // Narrow screens pull the wide two-points shot back so both shields fit beside the text.
-    const dolly = lerp(1, narrow ? 1.2 : clamp(1300 / W, 1, 2.2), fade(p, 0.46, 0.66, 0.06));
-    cam.pos = add(look, [(cam.pos[0] - look[0]) * dolly, (cam.pos[1] - look[1]) * dolly, (cam.pos[2] - look[2]) * dolly]);
-    cam.f = norm(sub(look, cam.pos));
+  function setBasis(pos, look) {
+    cam.pos = pos;
+    cam.f = norm(sub(look, pos));
     cam.r = norm(cross(cam.f, [0, 1, 0]));
     cam.u = cross(cam.r, cam.f);
-    let sx = 0, sy = 0;
-    let i = 0;
-    while (i < CENTERS.length - 2 && p > CENTERS[i + 1]) i++;
-    const t = smooth(clamp((p - CENTERS[i]) / (CENTERS[i + 1] - CENTERS[i])));
-    sx = lerp(SHIFT_X[i], SHIFT_X[i + 1], t);
-    sy = lerp(SHIFT_Y[i], SHIFT_Y[i + 1], t);
-    if (narrow) { sx = 0; sy = lerp(NARROW_Y[i], NARROW_Y[i + 1], t); }
-    cam.cx = W / 2 + sx * W;
-    cam.cy = H / 2 + sy * H;
   }
   const toCam = p => { const d = sub(p, cam.pos); return [dot(d, cam.r), dot(d, cam.u), dot(d, cam.f)]; };
   const proj = c => { const k = cam.focal / c[2]; return [cam.cx + c[0] * k, cam.cy - c[1] * k, k]; };
   const P = p => { const c = toCam(p); return c[2] < NEAR ? null : proj(c); };
+  const offsetOf = p => { const c = toCam(p); if (c[2] < NEAR) return null; const k = cam.focal / c[2]; return [c[0] * k, -c[1] * k, k]; };
 
+  // Fit one subject (gate or phone) so it fills the free rectangle at a sensible size.
+  function fitNode(pos0, look, node, R, fr) {
+    setBasis(pos0, look);
+    const c = toCam(node);
+    if (c[2] < NEAR) return null;
+    const rPx = Math.min((fr.x1 - fr.x0) * 0.5, (fr.y1 - fr.y0) * 0.5) * 0.86;
+    const wantK = Math.min(rPx, 320) / R;
+    const f = clamp((cam.focal / c[2]) / wantK, 0.3, 4);
+    const pos = add(node, mul(sub(pos0, node), f));
+    setBasis(pos, look);
+    const o = offsetOf(node);
+    return o ? { pos, cx: (fr.x0 + fr.x1) / 2 - o[0], cy: (fr.y0 + fr.y1) / 2 + (narrow ? 8 : 26) - o[1] } : null;
+  }
+  // Fit both shields so they sit side by side inside the free rectangle.
+  function fitTwo(pos0, look, a, b, fr) {
+    setBasis(pos0, look);
+    const pivot = mix(a, b, 0.5);
+    const oa = offsetOf(a), ob = offsetOf(b);
+    if (!oa || !ob) return null;
+    const span = Math.max(30, Math.abs(ob[0] - oa[0]));
+    const f = clamp(span / ((fr.x1 - fr.x0) * (narrow ? 0.62 : 0.6)), 0.3, 5);
+    const pos = add(pivot, mul(sub(pos0, pivot), f));
+    setBasis(pos, look);
+    const pa = offsetOf(a), pb = offsetOf(b);
+    if (!pa || !pb) return null;
+    return { pos, cx: (fr.x0 + fr.x1) / 2 - (pa[0] + pb[0]) / 2, cy: lerp(fr.y0, fr.y1, narrow ? 0.62 : 0.6) - (pa[1] + pb[1]) / 2 };
+  }
+
+  function pose(p) {
+    const pos0 = hermite(p, k => k.pos);
+    const look = hermite(p, k => k.look);
+    let i = 0;
+    while (i < CENTERS.length - 2 && p > CENTERS[i + 1]) i++;
+    const t = smooth(clamp((p - CENTERS[i]) / (CENTERS[i + 1] - CENTERS[i])));
+    let sx = lerp(SHIFT_X[i], SHIFT_X[i + 1], t);
+    let sy = lerp(SHIFT_Y[i], SHIFT_Y[i + 1], t);
+    if (narrow) { sx = 0; sy = lerp(NARROW_Y[i], NARROW_Y[i + 1], t); }
+    const cx0 = W / 2 + sx * W, cy0 = H / 2 + sy * H;
+    const weights = [
+      1 - smooth(clamp((p - 0.08) / 0.08)),
+      0,
+      smooth(clamp((p - 0.26) / 0.08)) * (1 - smooth(clamp((p - 0.42) / 0.08))),
+      smooth(clamp((p - 0.42) / 0.08)) * (1 - smooth(clamp((p - 0.60) / 0.08))),
+      smooth(clamp((p - 0.60) / 0.08)) * (1 - smooth(clamp((p - 0.80) / 0.07)))
+    ];
+    const total = weights.reduce((s, w) => s + w, 0);
+    const scale = total > 1 ? 1 / total : 1;
+    let pos = [0, 0, 0], cx = 0, cy = 0, used = 0;
+    const fits = [
+      () => fitNode(pos0, look, DEVICE, 1.9, free[0]), null,
+      () => fitNode(pos0, look, ENTRY, 3.1, free[2]),
+      () => fitTwo(pos0, look, ENTRY, EXIT, free[3]),
+      () => fitNode(pos0, look, EXIT, 3.1, free[4])
+    ];
+    weights.forEach((w, n) => {
+      if (w * scale < 0.002 || !fits[n] || !free[n]) return;
+      const fit = fits[n]();
+      if (!fit) return;
+      const k = w * scale;
+      pos = add(pos, mul(fit.pos, k)); cx += fit.cx * k; cy += fit.cy * k; used += k;
+    });
+    pos = add(pos, mul(pos0, 1 - used));
+    cx += cx0 * (1 - used); cy += cy0 * (1 - used);
+    setBasis(pos, look);
+    cam.cx = cx; cam.cy = cy;
+    return weights.map(w => w * scale);
+  }
+
+  // ---- drawing primitives -----------------------------------------------------------
   function seg(a, b) {
     let ca = toCam(a), cb = toCam(b);
     if (ca[2] < NEAR && cb[2] < NEAR) return null;
@@ -192,10 +255,7 @@
     ctx.lineWidth = width;
     ctx.beginPath(); ctx.moveTo(s[0][0], s[0][1]); ctx.lineTo(s[1][0], s[1][1]); ctx.stroke();
   }
-  function polyline(points, colour, alpha, width = 1, close = false) {
-    if (alpha <= 0.003) return;
-    ctx.strokeStyle = rgba(colour, alpha);
-    ctx.lineWidth = width;
+  function trace(points, close) {
     ctx.beginPath();
     let pen = false;
     const n = points.length;
@@ -204,13 +264,20 @@
       if (!q) { pen = false; continue; }
       if (pen) ctx.lineTo(q[0], q[1]); else { ctx.moveTo(q[0], q[1]); pen = true; }
     }
+  }
+  function polyline(points, colour, alpha, width = 1, close = false) {
+    if (alpha <= 0.003) return;
+    ctx.strokeStyle = rgba(colour, alpha);
+    ctx.lineWidth = width;
+    trace(points, close);
     ctx.stroke();
   }
-  function ringPoints(centre, radius, steps, rotY, tiltX) {
+  // Circle facing the stream (xy plane), rotated by rotY and tilted by tiltX.
+  function ringPoints(centre, radius, steps, rotY, tiltX, from = 0, to = TAU) {
     const out = [];
     const cy = Math.cos(rotY), sy = Math.sin(rotY), cx = Math.cos(tiltX), sx = Math.sin(tiltX);
-    for (let i = 0; i < steps; i++) {
-      const a = (i / steps) * TAU;
+    for (let i = 0; i <= steps; i++) {
+      const a = from + (i / steps) * (to - from);
       let x = Math.cos(a) * radius, y = Math.sin(a) * radius, z = 0;
       const y2 = y * cx - z * sx, z2 = y * sx + z * cx; y = y2; z = z2;
       const x2 = x * cy + z * sy, z3 = -x * sy + z * cy; x = x2; z = z3;
@@ -218,6 +285,12 @@
     }
     return out;
   }
+  const ringClosed = (centre, radius, steps, rotY, tiltX) => ringPoints(centre, radius, steps, rotY, tiltX).slice(0, -1);
+  // Circle lying flat on the ground (xz plane).
+  const flatRing = (centre, radius, steps = 56) => Array.from({ length: steps }, (_, i) => {
+    const a = (i / steps) * TAU;
+    return [centre[0] + Math.cos(a) * radius, GROUND, centre[2] + Math.sin(a) * radius];
+  });
   function glow(q, radius, colour, alpha) {
     if (radius < 0.5 || alpha <= 0.003) return;
     const g = ctx.createRadialGradient(q[0], q[1], 0, q[0], q[1], radius);
@@ -226,12 +299,88 @@
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(q[0], q[1], radius, 0, TAU); ctx.fill();
   }
-  function label(text, at, colour, alpha, size = 11) {
+  function roundedPath(g, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.beginPath();
+    g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.arcTo(x + w, y, x + w, y + r, r);
+    g.lineTo(x + w, y + h - r); g.arcTo(x + w, y + h, x + w - r, y + h, r);
+    g.lineTo(x + r, y + h); g.arcTo(x, y + h, x, y + h - r, r);
+    g.lineTo(x, y + r); g.arcTo(x, y, x + r, y, r); g.closePath();
+  }
+
+  // ---- information cards (screen space) ---------------------------------------------
+  function layoutCards(list, fr) {
+    const fs = narrow ? 10 : 11;
+    list.forEach(c => {
+      ctx.font = `700 ${fs}px ${MONO}`;
+      let w = ctx.measureText(c.title).width;
+      ctx.font = `500 ${fs + 1}px ${SANS}`;
+      c.lines.forEach(l => { w = Math.max(w, ctx.measureText(l.text).width + 14); });
+      c.w = Math.ceil(w + 26);
+      c.h = Math.ceil(27 + fs + c.lines.length * (fs + 7));
+      c.fs = fs;
+      c.x = clamp(c.ax - c.w / 2, fr.x0, Math.max(fr.x0, fr.x1 - c.w));
+      c.y = Math.max(fr.y0 + 4, c.ay - c.h - (narrow ? 14 : 22));
+    });
+    if (list.length === 2) {
+      const [a, b] = list[0].ax <= list[1].ax ? list : [list[1], list[0]];
+      const gap = 10, over = a.x + a.w + gap - b.x;
+      if (over > 0) {
+        a.x = Math.max(fr.x0, a.x - over / 2);
+        b.x = Math.min(Math.max(fr.x0, fr.x1 - b.w), b.x + over / 2);
+        if (a.x + a.w + gap > b.x) b.y = Math.max(fr.y0 + 4, a.y - b.h - 10);
+      }
+    }
+  }
+  function drawCard(c, alpha) {
+    if (alpha <= 0.02) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // leader line from the card down to the shield
+    const lx = clamp(c.ax, c.x + 14, c.x + c.w - 14);
+    ctx.strokeStyle = rgba(c.colour, 0.75); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, c.y + c.h); ctx.lineTo(c.ax, c.ay); ctx.stroke();
+    ctx.fillStyle = rgba(c.colour, 1);
+    ctx.beginPath(); ctx.arc(c.ax, c.ay, 3, 0, TAU); ctx.fill();
+    roundedPath(ctx, c.x, c.y, c.w, c.h, 10);
+    ctx.fillStyle = 'rgba(5,13,26,0.9)'; ctx.fill();
+    ctx.strokeStyle = rgba(c.colour, 0.65); ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = rgba(c.colour, 1);
+    ctx.fillRect(c.x + 1, c.y + 10, 3, c.h - 20);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `700 ${c.fs}px ${MONO}`;
+    ctx.fillText(c.title, c.x + 14, c.y + 8 + c.fs + 4);
+    c.lines.forEach((l, i) => {
+      ctx.font = `${l.dim ? 400 : 600} ${c.fs + 1}px ${SANS}`;
+      ctx.fillStyle = l.dim ? 'rgba(168,190,210,0.85)' : 'rgba(236,246,255,0.97)';
+      ctx.fillText(l.text, c.x + 14, c.y + 8 + c.fs + 4 + 7 + (i + 1) * (c.fs + 7) - 2);
+    });
+    ctx.restore();
+  }
+  function drawBracket(a, b, y, alpha) {
+    if (alpha <= 0.02) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = 'rgba(205,234,255,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(a, y - 7); ctx.lineTo(a, y); ctx.lineTo(b, y); ctx.lineTo(b, y - 7);
+    ctx.stroke();
+    const text = narrow ? 'ONE CONNECTION' : 'ONE SEAMLESS CONNECTION';
+    ctx.font = `700 ${narrow ? 9 : 10}px ${MONO}`;
+    const w = ctx.measureText(text).width + 22;
+    const x = (a + b) / 2 - w / 2;
+    roundedPath(ctx, x, y - 11, w, 22, 11);
+    ctx.fillStyle = 'rgba(5,13,26,0.94)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(205,234,255,0.5)'; ctx.stroke();
+    ctx.fillStyle = 'rgba(214,236,255,0.95)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, (a + b) / 2, y + 0.5);
+    ctx.restore();
+  }
+  function label(text, at, colour, alpha) {
     const q = P(at);
     if (!q || alpha <= 0.02) return;
-    const px = clamp(q[2] * size * 0.075, 9, 14);
-    ctx.font = `600 ${px}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
-    ctx.textAlign = 'center';
+    ctx.font = `700 ${clamp(q[2] * 0.8, 9, 13)}px ${MONO}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = rgba(colour, alpha);
     ctx.fillText(text, q[0], q[1]);
   }
@@ -239,9 +388,8 @@
   // ---- scene pieces -----------------------------------------------------------------
   function backdrop(p) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    const deep = smooth(clamp((p - 0.8) / 0.2));
-    g.addColorStop(0, `rgba(${Math.round(lerp(14, 6, deep))},${Math.round(lerp(33, 22, deep))},${Math.round(lerp(60, 36, deep))},0.0)`);
-    g.addColorStop(1, rgba(COL.mint, 0.06 * deep));
+    g.addColorStop(0, 'rgba(14,33,60,0)');
+    g.addColorStop(1, rgba(COL.mint, 0.06 * smooth(clamp((p - 0.8) / 0.2))));
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
   function drawStars() {
@@ -258,27 +406,22 @@
   function drawGrid(p) {
     const fadeOut = clamp((cam.pos[1] + 2) / 3) * (1 - smooth(clamp((p - 0.82) / 0.1)));
     if (fadeOut <= 0.01) return;
-    const y = -3.2;
+    const y = GROUND;
     for (let z = 8; z >= -60; z -= 4) {
       for (let x = -40; x < 40; x += 4) {
-        const mid = [x + 2, y, z];
-        const d = len(sub(mid, cam.pos));
-        const a = 0.2 * Math.pow(clamp(1 - d / 58), 1.5) * fadeOut;
-        line([x, y, z], [x + 4, y, z], COL.blue, a);
+        const d = len(sub([x + 2, y, z], cam.pos));
+        line([x, y, z], [x + 4, y, z], COL.blue, 0.2 * Math.pow(clamp(1 - d / 58), 1.5) * fadeOut);
       }
     }
     for (let x = -40; x <= 40; x += 4) {
       for (let z = 8; z > -60; z -= 4) {
-        const mid = [x, y, z - 2];
-        const d = len(sub(mid, cam.pos));
-        const a = 0.2 * Math.pow(clamp(1 - d / 58), 1.5) * fadeOut;
-        line([x, y, z], [x, y, z - 4], COL.blue, a);
+        const d = len(sub([x, y, z - 2], cam.pos));
+        line([x, y, z], [x, y, z - 4], COL.blue, 0.2 * Math.pow(clamp(1 - d / 58), 1.5) * fadeOut);
       }
     }
   }
   function drawFans(p, t) {
-    const eAmt = Math.max(fade(p, 0.3, 0.47, 0.05), fade(p, 0.47, 0.65, 0.05));
-    const xAmt = Math.max(fade(p, 0.47, 0.65, 0.05), fade(p, 0.65, 0.83, 0.05));
+    const eAmt = fade(p, 0.47, 0.65, 0.05), xAmt = eAmt;
     const fan = (apex, corners, colour, amt) => {
       if (amt <= 0.01) return;
       const pts = corners.map(P);
@@ -287,7 +430,7 @@
       const mid = pts.reduce((m, q) => [m[0] + q[0] / pts.length, m[1] + q[1] / pts.length], [0, 0]);
       const g = ctx.createLinearGradient(a[0], a[1], mid[0], mid[1]);
       g.addColorStop(0, rgba(colour, 0.2 * amt));
-      g.addColorStop(1, rgba(colour, 0.02 * amt));
+      g.addColorStop(1, rgba(colour, 0.015 * amt));
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.moveTo(a[0], a[1]);
       pts.forEach(q => ctx.lineTo(q[0], q[1]));
@@ -297,12 +440,10 @@
       ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(pts[0][0], pts[0][1]); ctx.moveTo(a[0], a[1]); ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]); ctx.stroke();
       ctx.setLineDash([]);
     };
-    fan(ENTRY, [add(ENTRY, [-5.5, 3.4, 10]), add(ENTRY, [5.5, 3.4, 10]), add(ENTRY, [5.5, -3.4, 10]), add(ENTRY, [-5.5, -3.4, 10])], COL.blue, eAmt);
-    fan(EXIT, [add(EXIT, [-6, 3.6, -11]), add(EXIT, [6, 3.6, -11]), add(EXIT, [6, -3.6, -11]), add(EXIT, [-6, -3.6, -11])], COL.mint, xAmt);
-    label('ENTRY SEES YOUR IP', add(ENTRY, [0, 3.8, 0]), COL.blue, fade(p, 0.47, 0.65, 0.05) * 0.9);
-    label('EXIT SEES THE DESTINATION', add(EXIT, [0, 3.8, 0]), COL.mint, fade(p, 0.47, 0.65, 0.05) * 0.9);
+    fan(ENTRY, [add(ENTRY, [-4, 3, 7.5]), add(ENTRY, [4, 3, 7.5]), add(ENTRY, [4, -3, 7.5]), add(ENTRY, [-4, -3, 7.5])], COL.blue, eAmt);
+    fan(EXIT, [add(EXIT, [-4, 3, -8]), add(EXIT, [4, 3, -8]), add(EXIT, [4, -3, -8]), add(EXIT, [-4, -3, -8])], COL.mint, xAmt);
   }
-  function drawPathLine(p) {
+  function drawPathLine() {
     const cut = (from, to) => path.filter((_, i) => { const s = (i / (SAMPLES - 1)) * totalLength; return s >= from && s <= to; });
     ctx.setLineDash([2, 9]);
     polyline(cut(0, sEntry), COL.blue, 0.5, 1.4);
@@ -310,100 +451,298 @@
     polyline(cut(sExit, totalLength), COL.mint, 0.5, 1.4);
     ctx.setLineDash([]);
   }
-  function drawNode(pos, colour, tag, t, show, seed) {
+
+  // A shield gate: segmented ring, glass lens, crystal core, orbiting satellites, ground pedestal.
+  const OCT = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  const OCT_FACES = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [0, 4, 3], [4, 1, 3], [1, 5, 3], [5, 0, 3]];
+  function drawShield(pos, colour, t, show, seed, entry) {
     const c = toCam(pos);
     if (c[2] < NEAR || show < 0.01) return;
     const q = proj(c);
     const pulse = 0.5 + 0.5 * Math.sin(t * 1.6 + seed);
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    glow(q, 3.8 * q[2], colour, 0.28 * show);
-    ctx.restore();
-    // gate rings facing the stream
-    const outer = ringPoints(pos, 2.6, 72, 0, 0);
-    polyline(outer, colour, 0.85 * show, 1.6, true);
-    polyline(ringPoints(pos, 2.2, 64, 0, 0), colour, 0.35 * show, 1, true);
-    ctx.setLineDash([3, 8]); ctx.lineDashOffset = -t * 10;
-    polyline(ringPoints(pos, 1.7, 56, 0, 0), COL.ice, 0.4 * show, 1, true);
-    ctx.setLineDash([]);
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * TAU + t * 0.12 * (seed ? -1 : 1);
-      const r0 = 2.6, r1 = i % 3 === 0 ? 3.05 : 2.85;
-      line([pos[0] + Math.cos(a) * r0, pos[1] + Math.sin(a) * r0, pos[2]], [pos[0] + Math.cos(a) * r1, pos[1] + Math.sin(a) * r1, pos[2]], colour, 0.6 * show, 1);
+    const dir = seed ? -1 : 1;
+    // pedestal on the ground and a light column up to the gate
+    const gp = [pos[0], GROUND, pos[2]];
+    const gq = P(gp);
+    if (gq) {
+      ctx.save();
+      ctx.translate(gq[0], gq[1]); ctx.scale(1, 0.32);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 4.2 * gq[2]);
+      g.addColorStop(0, rgba(colour, 0.34 * show)); g.addColorStop(1, rgba(colour, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 4.2 * gq[2], 0, TAU); ctx.fill();
+      ctx.restore();
     }
-    // tilted orbits
-    polyline(ringPoints(pos, 1.25, 56, t * 0.5 + seed, 1.15), colour, 0.55 * show, 1.2, true);
-    polyline(ringPoints(pos, 1.6, 64, -t * 0.35 + seed, 0.55), colour, 0.35 * show, 1, true);
-    // core
-    const r = 0.6 * q[2];
-    const g = ctx.createRadialGradient(q[0] - r * 0.3, q[1] - r * 0.3, r * 0.1, q[0], q[1], r);
-    g.addColorStop(0, rgba([255, 255, 255], 0.95 * show));
-    g.addColorStop(0.35, rgba(colour, 0.9 * show));
-    g.addColorStop(1, rgba(colour, 0.12 * show));
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, TAU); ctx.fill();
+    [1.4, 2.4, 3.4].forEach((r, i) => polyline(flatRing(pos, r), colour, (0.7 - i * 0.18) * show, i === 0 ? 1.6 : 1, true));
+    const col = P([pos[0], GROUND, pos[2]]);
+    if (col) {
+      const g = ctx.createLinearGradient(col[0], col[1], q[0], q[1]);
+      g.addColorStop(0, rgba(colour, 0.5 * show)); g.addColorStop(1, rgba(colour, 0));
+      ctx.strokeStyle = g; ctx.lineWidth = Math.max(1, 0.1 * q[2]);
+      ctx.beginPath(); ctx.moveTo(col[0], col[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+    }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    glow(q, r * (2.2 + pulse * 0.6), colour, 0.35 * show);
+    glow(q, 3.8 * q[2], colour, 0.26 * show);
     ctx.restore();
-    label(tag, add(pos, [0, 3.7, 0]), colour, 0.95 * show * tagAmt * clamp((c[2] - 2) / 4));
+    // glass lens
+    const lens = ringClosed(pos, 2.2, 56, 0, 0).map(P);
+    if (lens.every(Boolean)) {
+      const g = ctx.createRadialGradient(q[0] - 0.5 * q[2], q[1] - 0.7 * q[2], 0, q[0], q[1], 2.4 * q[2]);
+      g.addColorStop(0, rgba(COL.white, 0.14 * show)); g.addColorStop(0.55, rgba(colour, 0.08 * show)); g.addColorStop(1, rgba(colour, 0.02 * show));
+      ctx.beginPath(); lens.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
+      ctx.fillStyle = g; ctx.fill();
+    }
+    // outer ring with soft halo, thin inner rings
+    polyline(ringClosed(pos, 2.6, 80, 0, 0), colour, 0.2 * show, 5, true);
+    polyline(ringClosed(pos, 2.6, 80, 0, 0), colour, 0.95 * show, 1.6, true);
+    polyline(ringClosed(pos, 2.2, 64, 0, 0), colour, 0.35 * show, 1, true);
+    ctx.setLineDash([3, 8]); ctx.lineDashOffset = -t * 10 * dir;
+    polyline(ringClosed(pos, 1.75, 56, 0, 0), COL.ice, 0.4 * show, 1, true);
+    ctx.setLineDash([]);
+    // three rotating arc segments and four data modules
+    for (let i = 0; i < 3; i++) {
+      const a0 = t * 0.35 * dir + (i * TAU) / 3;
+      polyline(ringPoints(pos, 2.95, 18, 0, 0, a0, a0 + 0.9), colour, 0.9 * show, 2.6);
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (i * TAU) / 4 + Math.PI / 4 - t * 0.12 * dir;
+      line([pos[0] + Math.cos(a) * 2.45, pos[1] + Math.sin(a) * 2.45, pos[2]], [pos[0] + Math.cos(a) * 3.35, pos[1] + Math.sin(a) * 3.35, pos[2]], COL.ice, 0.85 * show, 3);
+    }
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * TAU - t * 0.08 * dir;
+      const r1 = i % 3 === 0 ? 2.5 : 2.42;
+      line([pos[0] + Math.cos(a) * 2.28, pos[1] + Math.sin(a) * 2.28, pos[2]], [pos[0] + Math.cos(a) * r1, pos[1] + Math.sin(a) * r1, pos[2]], colour, 0.5 * show, 1);
+    }
+    // entry takes connections in (rings shrink toward the gate); exit sends them onward (rings expand away)
+    for (let i = 0; i < 3; i++) {
+      const age = (t * 0.28 + i / 3) % 1;
+      const z = entry ? 3.6 * (1 - age) : -3.6 * age;
+      const r = entry ? 3.4 - 1.5 * age : 1.8 + 1.5 * age;
+      polyline(ringClosed([pos[0], pos[1], pos[2] + z], r, 56, 0, 0), colour, 0.35 * show * (entry ? age : 1 - age), 1, true);
+    }
+    // crystal core
+    const rot = t * 0.8 * dir + seed;
+    const V = OCT.map(v => {
+      const x = v[0] * Math.cos(rot) + v[2] * Math.sin(rot), z = -v[0] * Math.sin(rot) + v[2] * Math.cos(rot);
+      return [pos[0] + x * 0.85, pos[1] + v[1] * 1.15, pos[2] + z * 0.85];
+    });
+    const faces = OCT_FACES.map(f => ({ f, d: len(sub(mix(mix(V[f[0]], V[f[1]], 0.5), V[f[2]], 0.34), cam.pos)) })).sort((a, b) => b.d - a.d);
+    faces.forEach(({ f }, i) => {
+      const pts = f.map(k => P(V[k]));
+      if (pts.some(v => !v)) return;
+      ctx.beginPath(); pts.forEach((v, n) => (n ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
+      ctx.fillStyle = rgba(mix(colour, COL.white, i / 14), (0.16 + (i / 8) * 0.22) * show); ctx.fill();
+      ctx.strokeStyle = rgba(COL.white, 0.75 * show); ctx.lineWidth = 1; ctx.stroke();
+    });
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    glow(q, 1.3 * q[2] * (1.8 + pulse * 0.5), colour, 0.5 * show);
+    ctx.restore();
+    // tilted orbits with satellites
+    [[1.3, 1.15, 0.5], [1.7, 0.55, -0.35]].forEach(([r, tilt, spd], n) => {
+      polyline(ringClosed(pos, r, 56, t * spd + seed, tilt), colour, 0.4 * show, 1, true);
+      for (let k = 0; k < 2; k++) {
+        const a = t * (n ? -0.9 : 1.2) + k * Math.PI;
+        const sp = ringPoints(pos, r, 1, t * spd + seed, tilt, a, a)[0];
+        const sq = P(sp);
+        if (sq) {
+          ctx.save(); ctx.globalCompositeOperation = 'lighter';
+          glow(sq, Math.max(3, 0.2 * sq[2]), COL.ice, 0.8 * show);
+          ctx.restore();
+          ctx.fillStyle = rgba(COL.white, 0.95 * show);
+          ctx.beginPath(); ctx.arc(sq[0], sq[1], Math.max(1.4, 0.06 * sq[2]), 0, TAU); ctx.fill();
+        }
+      }
+    });
   }
+
+  // ---- the phone ----------------------------------------------------------------------
+  const PH = { w: 1.38, h: 2.82, d: 0.17, r: 0.3, bezel: 0.06 };
+  const outline = (hw, hh, r, seg = 8) => {
+    const out = [];
+    const corners = [[hw - r, hh - r, 0], [-hw + r, hh - r, 90], [-hw + r, -hh + r, 180], [hw - r, -hh + r, 270]];
+    corners.forEach(([cx, cy, a0]) => {
+      for (let i = 0; i <= seg; i++) {
+        const a = ((a0 + (i / seg) * 90) * Math.PI) / 180;
+        out.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+      }
+    });
+    return out;
+  };
+  const shell = outline(PH.w / 2, PH.h / 2, PH.r);
+  const TW = 360, TH = 780;
+  const tex = document.createElement('canvas');
+  tex.width = TW; tex.height = TH;
+  const tg = tex.getContext('2d');
+  const logo = new Image();
+  let logoReady = false;
+  logo.onload = () => { logoReady = true; };
+  logo.src = 'assets/tian-logo.png';
+
+  function drawScreen(t) {
+    const g = tg;
+    g.clearRect(0, 0, TW, TH);
+    const bg = g.createLinearGradient(0, 0, 0, TH);
+    bg.addColorStop(0, '#0d2748'); bg.addColorStop(0.55, '#07162c'); bg.addColorStop(1, '#040b17');
+    g.fillStyle = bg; g.fillRect(0, 0, TW, TH);
+    const halo = g.createRadialGradient(180, 360, 10, 180, 360, 250);
+    halo.addColorStop(0, 'rgba(70,150,230,0.42)'); halo.addColorStop(1, 'rgba(70,150,230,0)');
+    g.fillStyle = halo; g.fillRect(0, 0, TW, TH);
+    // status bar and dynamic island
+    g.fillStyle = '#eaf4ff'; g.font = `600 17px ${SANS}`; g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillText('9:41', 30, 34);
+    g.fillStyle = '#000'; roundedPath(g, 125, 14, 110, 34, 17); g.fill();
+    g.fillStyle = '#eaf4ff';
+    for (let i = 0; i < 4; i++) g.fillRect(278 + i * 7, 40 - i * 4 - 4, 4, 4 + i * 4);
+    roundedPath(g, 314, 28, 26, 13, 4); g.strokeStyle = 'rgba(234,244,255,0.8)'; g.lineWidth = 1.5; g.stroke();
+    g.fillRect(317, 31, 17, 7);
+    // brand
+    if (logoReady) { const lh = 54, lw = (logo.width / logo.height) * lh; g.drawImage(logo, 36, 92, lw, lh); }
+    g.fillStyle = '#eaf4ff'; g.font = `600 26px ${SANS}`; g.textAlign = 'left';
+    g.fillText('TIAN', logoReady ? 36 + (logo.width / logo.height) * 54 + 12 : 36, 120);
+    // connection orb
+    const pulse = 0.5 + 0.5 * Math.sin(t * 2);
+    for (let i = 3; i >= 0; i--) {
+      g.beginPath(); g.arc(180, 350, 62 + i * 24 + pulse * 4, 0, TAU);
+      g.strokeStyle = `rgba(126,200,255,${0.14 + (3 - i) * 0.05})`; g.lineWidth = 1.5; g.stroke();
+    }
+    const orb = g.createRadialGradient(165, 335, 4, 180, 350, 66);
+    orb.addColorStop(0, '#ffffff'); orb.addColorStop(0.3, '#9ad4ff'); orb.addColorStop(1, '#2468b8');
+    g.beginPath(); g.arc(180, 350, 58, 0, TAU); g.fillStyle = orb; g.fill();
+    g.beginPath();
+    g.moveTo(180, 318); g.lineTo(207, 328); g.lineTo(207, 354); g.quadraticCurveTo(207, 376, 180, 386);
+    g.quadraticCurveTo(153, 376, 153, 354); g.lineTo(153, 328); g.closePath();
+    g.fillStyle = 'rgba(8,28,58,0.88)'; g.fill();
+    g.strokeStyle = '#d8efff'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = '#eaf4ff'; g.font = `600 22px ${SANS}`; g.textAlign = 'center';
+    g.fillText('Connected', 180, 468);
+    g.fillStyle = 'rgba(168,196,222,0.9)'; g.font = `500 14px ${SANS}`;
+    g.fillText('Private network', 180, 494);
+    // route chips
+    const chip = (x, label, colour) => {
+      roundedPath(g, x, 540, 124, 40, 20); g.fillStyle = 'rgba(14,34,62,0.95)'; g.fill();
+      g.strokeStyle = 'rgba(126,200,255,0.4)'; g.lineWidth = 1; g.stroke();
+      g.beginPath(); g.arc(x + 22, 560, 6, 0, TAU); g.fillStyle = colour; g.fill();
+      g.fillStyle = '#d6ecff'; g.font = `700 13px ${MONO}`; g.textAlign = 'left'; g.fillText(label, x + 38, 561);
+    };
+    chip(40, 'ENTRY', '#7ec8ff'); chip(196, 'EXIT', '#64f4ac');
+    g.strokeStyle = 'rgba(205,234,255,0.5)'; g.setLineDash([3, 4]); g.beginPath(); g.moveTo(166, 560); g.lineTo(194, 560); g.stroke(); g.setLineDash([]);
+    // bottom bar
+    roundedPath(g, 40, 640, 280, 56, 28);
+    const btn = g.createLinearGradient(40, 640, 320, 696);
+    btn.addColorStop(0, '#c0e5ff'); btn.addColorStop(1, '#8fe3d4');
+    g.fillStyle = btn; g.fill();
+    g.fillStyle = '#0b1d32'; g.font = `700 17px ${SANS}`; g.textAlign = 'center'; g.fillText('Disconnect', 180, 669);
+    roundedPath(g, 130, 746, 100, 5, 2.5); g.fillStyle = 'rgba(234,244,255,0.7)'; g.fill();
+  }
+
   function drawDevice(t, show) {
     if (show < 0.01) return;
-    const ry = -0.32 + Math.sin(t * 0.6) * 0.07, rx = 0.06;
-    const hx = 0.66, hy = 1.32, hz = 0.07;
-    const cy = Math.cos(ry), sy = Math.sin(ry), cx = Math.cos(rx), sx = Math.sin(rx);
-    const xf = v => {
-      let [x, y, z] = v;
-      const y2 = y * cx - z * sx, z2 = y * sx + z * cx; y = y2; z = z2;
-      const x2 = x * cy + z * sy, z3 = -x * sy + z * cy;
-      return [DEVICE[0] + x2, DEVICE[1] + y, DEVICE[2] + z3];
+    const bob = Math.sin(t * 0.9) * 0.05;
+    const ry = -0.34 + Math.sin(t * 0.55) * 0.06, rx = 0.05;
+    const cyy = Math.cos(ry), syy = Math.sin(ry), cxx = Math.cos(rx), sxx = Math.sin(rx);
+    const xf = (x, y, z) => {
+      const y2 = y * cxx - z * sxx, z2 = y * sxx + z * cxx;
+      const x2 = x * cyy + z2 * syy, z3 = -x * syy + z2 * cyy;
+      return [DEVICE[0] + x2, DEVICE[1] + bob + y2, DEVICE[2] + z3];
     };
-    const V = [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]].map(xf);
-    const faces = [[4, 5, 6, 7, 'front'], [1, 0, 3, 2, 'back'], [0, 4, 7, 3, 'side'], [5, 1, 2, 6, 'side'], [3, 7, 6, 2, 'side'], [0, 1, 5, 4, 'side']];
-    const centre = xf([0, 0, 0]);
+    const centre = xf(0, 0, 0);
+    const cq = P(centre);
+    if (!cq) return;
+    const hd = PH.d / 2;
+    const frontN = sub(xf(0, 0, 1), centre);
+    const frontVisible = dot(frontN, sub(cam.pos, centre)) > 0;
     ctx.save();
     ctx.globalAlpha = show;
-    const cq = P(centre);
-    if (cq) { ctx.globalCompositeOperation = 'lighter'; glow(cq, 2.6 * cq[2], COL.blue, 0.22); ctx.globalCompositeOperation = 'source-over'; }
-    for (const f of faces) {
-      const pts = f.slice(0, 4).map(i => V[i]);
-      const mid = pts.reduce((m, q) => add(m, [q[0] / 4, q[1] / 4, q[2] / 4]), [0, 0, 0]);
-      const n = norm(cross(sub(pts[1], pts[0]), sub(pts[3], pts[0])));
+    // glow, floor shadow
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(cq, 3.4 * cq[2], COL.blue, 0.2); ctx.restore();
+    const fq = P([centre[0], GROUND, centre[2]]);
+    if (fq) {
+      ctx.save(); ctx.translate(fq[0], fq[1]); ctx.scale(1, 0.28);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 2.3 * fq[2]);
+      g.addColorStop(0, 'rgba(126,200,255,0.3)'); g.addColorStop(1, 'rgba(126,200,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 2.3 * fq[2], 0, TAU); ctx.fill(); ctx.restore();
+    }
+    // titanium side walls, shaded by a fixed light
+    const L = norm([-0.5, 0.6, 0.7]);
+    const walls = [];
+    for (let i = 0; i < shell.length; i++) {
+      const a = shell[i], b = shell[(i + 1) % shell.length];
+      const p0 = xf(a[0], a[1], hd), p1 = xf(b[0], b[1], hd), p2 = xf(b[0], b[1], -hd), p3 = xf(a[0], a[1], -hd);
+      let n = norm(cross(sub(p1, p0), sub(p3, p0)));
+      const mid = mix(mix(p0, p1, 0.5), mix(p3, p2, 0.5), 0.5);
+      if (dot(n, sub(mid, centre)) < 0) n = mul(n, -1);
       if (dot(n, sub(cam.pos, mid)) <= 0) continue;
-      const q = pts.map(P);
-      if (q.some(v => !v)) continue;
-      ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); q.slice(1).forEach(v => ctx.lineTo(v[0], v[1])); ctx.closePath();
-      ctx.fillStyle = f[4] === 'front' ? 'rgba(8,19,36,0.97)' : 'rgba(13,30,52,0.97)';
-      ctx.fill();
-      ctx.strokeStyle = rgba(COL.ice, 0.85); ctx.lineWidth = 1.4; ctx.stroke();
-      if (f[4] === 'front') {
-        const inset = (a, b, u, v) => mix(mix(a, b, u), mix(pts[3], pts[2], u), v);
-        const s0 = inset(pts[0], pts[1], 0.08, 0.05), s1 = inset(pts[0], pts[1], 0.92, 0.05), s2 = inset(pts[0], pts[1], 0.92, 0.95), s3 = inset(pts[0], pts[1], 0.08, 0.95);
-        const sq = [s0, s1, s2, s3].map(P);
-        if (sq.every(v => v)) {
-          const g = ctx.createLinearGradient(sq[0][0], sq[0][1], sq[2][0], sq[2][1]);
-          g.addColorStop(0, 'rgba(46,118,196,0.78)'); g.addColorStop(0.55, 'rgba(14,44,84,0.95)'); g.addColorStop(1, 'rgba(8,24,48,0.98)');
-          ctx.beginPath(); ctx.moveTo(sq[0][0], sq[0][1]); sq.slice(1).forEach(v => ctx.lineTo(v[0], v[1])); ctx.closePath();
-          ctx.fillStyle = g; ctx.fill();
-          const sc = mix(mix(s0, s2, 0.5), [0, 0, 0], 0);
-          const ring = ringPoints(add(sc, mix([0, 0, 0], sub(n, [0, 0, 0]), 0.02)), 0.38, 48, ry, rx);
-          polyline(ring, COL.ice, 0.95, 2, true);
-          polyline(ringPoints(add(sc, [0, 0, 0]), 0.2, 40, ry, rx), COL.blue, 0.8, 1.4, true);
-        }
+      walls.push({ q: [p0, p1, p2, p3].map(P), n, d: len(sub(mid, cam.pos)) });
+    }
+    walls.sort((a, b) => b.d - a.d).forEach(w => {
+      if (w.q.some(v => !v)) return;
+      const b = clamp(dot(w.n, L) * 0.5 + 0.5);
+      const c = mix([26, 38, 56], [190, 214, 238], Math.pow(b, 1.6));
+      ctx.beginPath(); w.q.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
+      ctx.fillStyle = rgba(c, 1); ctx.fill();
+      ctx.strokeStyle = rgba(c, 1); ctx.lineWidth = 0.6; ctx.stroke();
+    });
+    // side buttons
+    [[-PH.w / 2, 0.55, 0.78, -1], [-PH.w / 2, 0.2, 0.44, -1], [-PH.w / 2, -0.15, 0.18, -1], [PH.w / 2, 0.35, 0.82, 1]].forEach(([x, y0, y1, s]) => {
+      const a = P(xf(x + s * 0.02, y0, 0)), b = P(xf(x + s * 0.02, y1 - 0.0, 0));
+      if (a && b) { ctx.strokeStyle = 'rgba(150,176,204,0.95)'; ctx.lineWidth = Math.max(2, 0.05 * a[2]); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.lineCap = 'butt'; }
+    });
+    if (frontVisible) {
+      const frame = shell.map(v => P(xf(v[0], v[1], hd)));
+      if (frame.every(Boolean)) {
+        ctx.beginPath(); frame.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
+        const g = ctx.createLinearGradient(frame[0][0], frame[0][1], frame[Math.floor(frame.length / 2)][0], frame[Math.floor(frame.length / 2)][1]);
+        g.addColorStop(0, '#c9dcef'); g.addColorStop(0.5, '#7b93ad'); g.addColorStop(1, '#3b4d63');
+        ctx.fillStyle = g; ctx.fill();
+        ctx.strokeStyle = 'rgba(235,246,255,0.95)'; ctx.lineWidth = 1.1; ctx.stroke();
+      }
+      // black glass bezel then the screen
+      const inner = outline(PH.w / 2 - 0.035, PH.h / 2 - 0.035, PH.r - 0.035).map(v => P(xf(v[0], v[1], hd + 0.002)));
+      if (inner.every(Boolean)) {
+        ctx.beginPath(); inner.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
+        ctx.fillStyle = '#02050a'; ctx.fill();
+      }
+      const sw = PH.w - PH.bezel * 2, sh = PH.h - PH.bezel * 2, z = hd + 0.004;
+      const o = P(xf(-sw / 2, sh / 2, z)), ux = P(xf(sw / 2, sh / 2, z)), vy = P(xf(-sw / 2, -sh / 2, z));
+      if (o && ux && vy && cq[2] * PH.h > 40) {
+        drawScreen(t);
+        ctx.save();
+        ctx.setTransform(dpr * (ux[0] - o[0]) / TW, dpr * (ux[1] - o[1]) / TW, dpr * (vy[0] - o[0]) / TH, dpr * (vy[1] - o[1]) / TH, dpr * o[0], dpr * o[1]);
+        roundedPath(ctx, 0, 0, TW, TH, 46); ctx.clip();
+        ctx.drawImage(tex, 0, 0);
+        // soft glass sheen
+        const sheen = ctx.createLinearGradient(0, 0, TW, TH * 0.6);
+        sheen.addColorStop(0, 'rgba(255,255,255,0.20)'); sheen.addColorStop(0.35, 'rgba(255,255,255,0.04)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = sheen; ctx.fillRect(0, 0, TW, TH);
+        ctx.restore();
+      } else if (inner.every(Boolean)) {
+        ctx.beginPath(); inner.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
+        ctx.fillStyle = '#0c2a4e'; ctx.fill();
+      }
+    } else {
+      // glass back with a camera plateau
+      const back = shell.map(v => P(xf(v[0], v[1], -hd)));
+      if (back.every(Boolean)) {
+        ctx.beginPath(); back.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
+        const g = ctx.createLinearGradient(back[0][0], back[0][1], back[Math.floor(back.length / 2)][0], back[Math.floor(back.length / 2)][1]);
+        g.addColorStop(0, '#2a3b52'); g.addColorStop(1, '#0d1726');
+        ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = 'rgba(205,234,255,0.7)'; ctx.lineWidth = 1; ctx.stroke();
+        [[0.28, 1.0], [0.28, 0.62], [0.58, 0.82]].forEach(([x, y]) => {
+          const lens = ringClosed([0, 0, 0], 0.12, 20, 0, 0).map(v => P(xf(-PH.w / 2 + x - 0.08 + v[0], y + v[1], -hd - 0.003)));
+          if (lens.every(Boolean)) { ctx.beginPath(); lens.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath(); ctx.fillStyle = '#05080e'; ctx.fill(); ctx.strokeStyle = '#8aa5c2'; ctx.stroke(); }
+        });
       }
     }
     ctx.restore();
-    label('YOUR DEVICE', add(DEVICE, [0, -2.0, 0]), COL.ice, 0.9 * show);
   }
   function drawPulses(t, show) {
     // Rings leaving the device along the stream: the connection starting.
     for (let i = 0; i < 4; i++) {
       const age = ((t * 0.22 + i / 4) % 1);
       const pos = [DEVICE[0] - age * 0.4, DEVICE[1] + 0.2 + age * 0.1, -0.5 - age * 7];
-      polyline(ringPoints(pos, 0.5 + age * 1.1, 40, 0, 0), COL.blue, (1 - age) * 0.5 * show, 1.4, true);
+      polyline(ringClosed(pos, 0.5 + age * 1.1, 40, 0, 0), COL.blue, (1 - age) * 0.5 * show, 1.4, true);
     }
   }
-  function drawPackets(t, p) {
+  function drawPackets(t) {
     const N = 40, speed = 3.4;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -433,7 +772,7 @@
     pulses.forEach(pl => {
       const e = edges[pl.e], f = (t * pl.v + pl.o) % 1;
       const q = P(mix(net[e[0]].p, net[e[1]].p, f));
-      if (q) { glow(q, Math.max(3, 0.28 * q[2]), COL.mint, 0.7 * amt); }
+      if (q) glow(q, Math.max(3, 0.28 * q[2]), COL.mint, 0.7 * amt);
     });
     net.forEach(n => {
       const q = P(n.p);
@@ -442,7 +781,6 @@
       ctx.fillStyle = rgba(COL.mint, fadeD(n.p, 0.95 * amt) * tw);
       ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(1, 0.13 * q[2]), 0, TAU); ctx.fill();
     });
-    // The Destination Shield fanning out to the open internet.
     targets.forEach((idx, k) => {
       const end = net[idx].p;
       const ctrl = [lerp(EXIT_POINT[0], end[0], 0.35), EXIT_POINT[1] - 3, lerp(EXIT_POINT[2], end[2], 0.4)];
@@ -460,29 +798,50 @@
     targets.slice(0, 3).forEach((idx, k) => label(siteLabels[k], add(net[idx].p, [0, 1.6, 0]), COL.mint, 0.85 * amt));
   }
 
+  // ---- frame ----------------------------------------------------------------------------
   function draw(p, t) {
     ctx.clearRect(0, 0, W, H);
-    pose(p);
-    tagAmt = 1 - fade(p, 0.47, 0.65, 0.05);
+    const w = pose(p);
     backdrop(p);
     drawStars();
     drawGrid(p);
     drawInternet(p, t);
     drawFans(p, t);
-    drawPathLine(p);
-    const show = {
-      device: 1 - smooth(clamp((p - 0.26) / 0.1)) * 0.0,
-      entry: smooth(clamp((p - 0.1) / 0.14)) * (1 - 0.0),
-      exit: smooth(clamp((p - 0.28) / 0.2))
-    };
-    const items = [
-      { d: len(sub(EXIT, cam.pos)), run: () => drawNode(EXIT, COL.mint, 'EXIT · DESTINATION', t, show.exit, 2) },
-      { d: len(sub(ENTRY, cam.pos)), run: () => drawNode(ENTRY, COL.blue, 'ENTRY · IDENTITY', t, show.entry, 0) },
-      { d: len(sub(DEVICE, cam.pos)), run: () => drawDevice(t, show.device) }
-    ].sort((a, b) => b.d - a.d);
+    drawPathLine();
+    const showEntry = smooth(clamp((p - 0.1) / 0.14));
+    const showExit = smooth(clamp((p - 0.28) / 0.2));
     drawPulses(t, 1 - smooth(clamp((p - 0.14) / 0.1)));
-    drawPackets(t, p);
-    items.forEach(i => i.run());
+    drawPackets(t);
+    [
+      { d: len(sub(EXIT, cam.pos)), run: () => drawShield(EXIT, COL.mint, t, showExit, 2, false) },
+      { d: len(sub(ENTRY, cam.pos)), run: () => drawShield(ENTRY, COL.blue, t, showEntry, 0, true) },
+      { d: len(sub(DEVICE, cam.pos)), run: () => drawDevice(t, 1) }
+    ].sort((a, b) => b.d - a.d).forEach(i => i.run());
+
+    // information cards, placed in the free area and anchored to each shield
+    const eAlpha = Math.max(fade(p, 0.3, 0.47, 0.05), fade(p, 0.47, 0.65, 0.05));
+    const xAlpha = Math.max(fade(p, 0.47, 0.65, 0.05), fade(p, 0.65, 0.83, 0.05));
+    const eq = P(ENTRY), xq = P(EXIT);
+    const cards = [];
+    if (eq && eAlpha > 0.02 && free[3]) {
+      cards.push({ key: 'e', ax: eq[0], ay: eq[1] - 3.15 * eq[2], title: 'ENTRY SHIELD', colour: COL.blue, alpha: eAlpha,
+        lines: [{ text: 'Sees your IP' }, { text: 'Not where you go', dim: true }] });
+    }
+    if (xq && xAlpha > 0.02 && free[3]) {
+      cards.push({ key: 'x', ax: xq[0], ay: xq[1] - 3.15 * xq[2], title: 'EXIT SHIELD', colour: COL.mint, alpha: xAlpha,
+        lines: [{ text: 'Sees where you go' }, { text: 'Not your IP', dim: true }] });
+    }
+    if (cards.length) {
+      const fr = p < 0.47 ? free[2] : p < 0.65 ? free[3] : free[4];
+      layoutCards(cards, fr || free[3]);
+      cards.forEach(c => drawCard(c, c.alpha));
+      if (w[3] > 0.05 && eq && xq) drawBracket(eq[0], xq[0], Math.max(eq[1], xq[1]) + 3.4 * Math.max(eq[2], xq[2]) + 24, w[3]);
+    }
+    const dq = P([DEVICE[0], DEVICE[1] - 2.15, DEVICE[2]]);
+    if (dq) {
+      const a = 1 - smooth(clamp((p - 0.08) / 0.1));
+      if (a > 0.02) label('YOUR DEVICE', [DEVICE[0], DEVICE[1] - 2.0, DEVICE[2]], COL.ice, 0.9 * a);
+    }
   }
 
   // ---- layout, scroll and loop ------------------------------------------------------
@@ -498,6 +857,16 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     narrow = W < 700;
     cam.focal = Math.min(W, H * 1.15) * 0.95;
+    // The part of the stage each chapter's text leaves free for the scene.
+    chapters.forEach((el, i) => {
+      const l = el.offsetLeft, tp = el.offsetTop, w = el.offsetWidth;
+      let r;
+      if (narrow) r = { x0: 12, x1: W - 40, y0: 12, y1: Math.max(120, tp - 14) };
+      else if (l + w / 2 < W / 2) r = { x0: l + w + 36, x1: W - 80, y0: 24, y1: H - 64 };
+      else r = { x0: 28, x1: l - 36, y0: 24, y1: H - 64 };
+      if (r.x1 - r.x0 < 160) { r.x0 = Math.min(r.x0, W * 0.35); r.x1 = Math.max(r.x1, r.x0 + 160); }
+      free[i] = r;
+    });
   }
   function readProgress() {
     const rect = root.getBoundingClientRect();
@@ -517,28 +886,59 @@
     }
     root.style.setProperty('--story-progress', p.toFixed(4));
   }
-  function goTo(index) {
+  function scrollForProgress(p) {
     const rect = root.getBoundingClientRect();
     const barH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 97;
     const span = root.offsetHeight - stage.offsetHeight;
-    const y = window.scrollY + rect.top - barH + CENTERS[index] * span;
-    window.scrollTo({ top: y, behavior: 'smooth' });
+    return window.scrollY + rect.top - barH + p * span;
   }
+  // Own eased scroll so chapter jumps and the magnet feel the same in every browser.
+  let anim = 0, animCancel = false;
+  const stopAnim = () => { animCancel = true; if (anim) cancelAnimationFrame(anim); anim = 0; };
+  function scrollToY(y) {
+    stopAnim();
+    const y0 = window.scrollY, d = y - y0;
+    if (Math.abs(d) < 2) return;
+    const dur = clamp(380 + Math.abs(d) * 0.3, 420, 1100), t0 = performance.now();
+    animCancel = false;
+    const step = now => {
+      if (animCancel) { anim = 0; return; }
+      const k = clamp((now - t0) / dur);
+      const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      window.scrollTo({ top: y0 + d * e, left: 0, behavior: 'instant' });
+      anim = k < 1 ? requestAnimationFrame(step) : 0;
+    };
+    anim = requestAnimationFrame(step);
+  }
+  ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(type => window.addEventListener(type, () => { if (anim) stopAnim(); }, { passive: true }));
+  const goTo = index => scrollToY(scrollForProgress(CENTERS[index]));
   dots.forEach((el, n) => el.addEventListener('click', () => goTo(n)));
   root.querySelectorAll('[data-story-next]').forEach(el => el.addEventListener('click', event => {
     event.preventDefault(); goTo(Math.min(CENTERS.length - 1, Math.max(1, activeChapter + 1)));
   }));
 
+  // Camera follows the scroll with a critically damped spring: quick to respond, no wobble.
+  const vel = { v: 0 };
+  function smoothDamp(current, target, smoothTime, dt) {
+    const omega = 2 / smoothTime, x = omega * dt;
+    const e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    const change = current - target;
+    const temp = (vel.v + omega * change) * dt;
+    vel.v = (vel.v - omega * temp) * e;
+    let out = target + (change + temp) * e;
+    if ((target - current > 0) === (out > target)) { out = target; vel.v = 0; }
+    return out;
+  }
   let cur = readProgress(), time = 0, last = performance.now(), raf = 0, onScreen = true;
   const isPaused = () => body.classList.contains('motion-paused');
   function frame(now) {
     raf = 0;
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
     last = now;
     if (!isPaused()) time += dt;
     const target = readProgress();
-    cur += (target - cur) * (1 - Math.exp(-dt * 7));
-    if (Math.abs(target - cur) < 0.00008) cur = target;
+    cur = smoothDamp(cur, target, 0.11, dt);
+    if (Math.abs(target - cur) < 0.00006 && Math.abs(vel.v) < 0.0005) { cur = target; vel.v = 0; }
     draw(cur, time);
     updateUi(cur);
     const moving = cur !== target;
@@ -546,9 +946,31 @@
   }
   function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
 
+  // Gentle magnet: when scrolling stops close to a chapter, ease onto it.
+  let touching = false, snapTimer = 0, snapping = false;
+  const snapCheck = () => {
+    if (touching || snapping) return;
+    const p = readProgress();
+    if (p < 0.012 || p > 0.985) return;
+    let best = 0;
+    CENTERS.forEach((c, i) => { if (Math.abs(c - p) < Math.abs(CENTERS[best] - p)) best = i; });
+    const d = Math.abs(CENTERS[best] - p);
+    if (d > 0.004 && d < 0.035) {
+      snapping = true;
+      goTo(best);
+      setTimeout(() => { snapping = false; }, 600);
+    }
+  };
+  const armSnap = () => { clearTimeout(snapTimer); snapTimer = setTimeout(snapCheck, 240); };
+  window.addEventListener('touchstart', () => { touching = true; }, { passive: true });
+  window.addEventListener('touchend', () => { touching = false; armSnap(); }, { passive: true });
+  window.addEventListener('touchcancel', () => { touching = false; armSnap(); }, { passive: true });
+
   measure();
-  window.addEventListener('scroll', kick, { passive: true });
+  window.addEventListener('scroll', () => { kick(); armSnap(); }, { passive: true });
   window.addEventListener('resize', () => { measure(); kick(); });
+  window.addEventListener('load', () => { measure(); kick(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { measure(); kick(); });
   document.addEventListener('visibilitychange', kick);
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(entries => { onScreen = entries[0].isIntersecting; if (onScreen) kick(); }, { rootMargin: '120px' }).observe(root);

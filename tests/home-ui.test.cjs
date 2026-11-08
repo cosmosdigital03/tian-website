@@ -452,3 +452,23 @@ test('UI interactions make no network requests, timers, or persistent-storage ca
   home.query('[data-story-next]').click();
   assert.deepEqual(home.sideEffects, []);
 });
+
+test('Every topic page keeps all other topics one tap away on desktop and phones', () => {
+  const topics = ['how-it-works.html', 'footprint.html', 'platforms.html', 'compare.html'];
+  for (const file of topics) {
+    const document = markup(read(file));
+    const bar = document.querySelector('.topic-bar');
+    assert.ok(bar, file + ' needs a topic bar');
+    const tabs = bar.querySelectorAll('a').filter(link => link.parentElement.classList.contains('topic-tabs'));
+    assert.deepEqual(tabs.map(link => link.getAttribute('href')), topics, file + ' topic tabs');
+    assert.deepEqual(tabs.filter(link => link.getAttribute('aria-current') === 'page').map(link => link.getAttribute('href')), [file]);
+    assert.equal(bar.querySelector('.topic-home').getAttribute('href'), './#explore', file + ' needs a way back to all topics');
+    const more = document.querySelector('.more-topics');
+    assert.ok(more, file + ' needs a keep-exploring section');
+    const targets = more.querySelectorAll('a').map(link => link.getAttribute('href')).filter(href => topics.includes(href));
+    assert.deepEqual(targets.sort(), topics.filter(name => name !== file).sort(), file + ' must offer the other three topics');
+  }
+  const home = markup(homeHtml);
+  assert.deepEqual(home.querySelectorAll('.explore-card').map(link => link.getAttribute('href')), topics);
+  assert.match(css, /\.topic-tabs\s*\{[^}]*overflow-x\s*:\s*auto/, 'Topic tabs must scroll sideways on narrow screens');
+});

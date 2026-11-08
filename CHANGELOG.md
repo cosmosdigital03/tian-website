@@ -8,12 +8,15 @@ Newest first. Dates are commit dates. An entry records what changed in source, n
 
 Not published until the owner approves. Same palette as the existing site.
 
-- Homepage is now a scroll-driven story: the camera follows a connection from the device, through the Entry shield (who you are), to a wide view of two points and two information views, then the Exit shield (where you go) and down to the open internet. Opening line: "TIAN is a private network that separates who you are from where you go." Built in `story.js` and `story.css` with no libraries.
-- Navigation now opens real pages instead of scrolling one page: `how-it-works.html`, `footprint.html`, `platforms.html`, `compare.html`. Each has one h1, the current page is marked, and old in-page links in support, privacy, terms and 404 point to the new pages.
-- Story controls: chapter dots, "Skip the story", Pause motion; reduced-motion, no-JavaScript and no-canvas visitors get the six chapters as stacked sections.
-- Tests: 100 of 100 pass (`node --test tests/*.test.cjs`). Connection, tab and ID tests now run against the page that owns the content; the retired hero-illustration tests were replaced by story tests.
-- Reviewed in a browser at about 900px wide and 375px wide for the homepage, plus the how-it-works and footprint pages. Not reviewed: support, privacy, terms and 404 at phone width, tablet, wide desktop above 1400px, Safari and Firefox, real devices, performance on older phones.
-- Known gaps: leftover CSS from the old hero remains in `premium.css`; the two-points shot is tuned by eye and may need adjustment on very wide or very short windows.
+- Homepage is a scroll-driven story: the camera follows a connection from the device, through the Entry shield (who you are), to a wide view of two points and two information views, then the Exit shield (where you go) and down to the open internet. Built in `story.js` and `story.css` with no libraries.
+- Graphics pass after owner feedback: the phone is now a rounded titanium body with a glass screen showing a stylised TIAN screen (illustration only, not a screenshot of the app); each shield has a segmented gate, glass lens, crystal core, orbiting satellites, ground pedestal and light column. Entry takes connections in, Exit sends them onward.
+- "Two points, two views": both shields sit side by side beside the text with labelled cards (Entry sees your IP, not where you go; Exit sees where you go, not your IP) and a bracket marked "One seamless connection". Every chapter is framed in the area the text leaves free, so no words sit behind a shield, on desktop or phone.
+- Scroll feel: camera follows with a critically damped spring (no wobble), story is shorter (640vh desktop, 560vh phone), and a gentle magnet eases onto a chapter when scrolling stops close to it. Chapter dots use the same eased scroll.
+- Navigation opens real pages: `how-it-works.html`, `footprint.html`, `platforms.html`, `compare.html`. Every topic page has a sticky topic bar (All topics plus the four tabs, scrolls sideways on phones) and a "Keep exploring" section with the other three topics, so you can always pick another topic.
+- Controls: chapter dots, "Skip the story", Pause motion. Reduced-motion, no-JavaScript and no-canvas visitors get the six chapters as stacked sections.
+- Tests: 101 of 101 pass (`node --test tests/*.test.cjs`).
+- Reviewed in a browser at about 900px wide and 375px wide: homepage chapters, how-it-works, platforms, footprint (lookup worked). Not reviewed: support, privacy, terms and 404 at phone width, tablet, wide desktop above 1400px, Safari and Firefox, real devices, performance on older phones, touch-scroll feel of the magnet on a real phone.
+- Known gaps: leftover CSS from the old hero remains in `premium.css`; the screen shown on the phone model is a design sketch and should be replaced with a real app screenshot when approved.
 
 ## 2026-11-08 - UI/UX refinement pass
 
