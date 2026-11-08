@@ -1150,7 +1150,7 @@
     stopAnim();
     const y0 = window.scrollY, d = y - y0;
     if (Math.abs(d) < 2) { if (done) done(); return; }
-    const dur = clamp(420 + Math.abs(d) * 0.28, 520, 1000), t0 = performance.now();
+    const dur = clamp(300 + Math.abs(d) * 0.22, 420, 720), t0 = performance.now();
     animCancel = false;
     html.classList.add('story-snap-paused');
     const step = now => {
@@ -1190,9 +1190,9 @@
     last = now;
     if (!isPaused()) { time += dt; stepNet(dt); }
     const target = readProgress();
-    const damped = smoothDamp(cur, target, 0.11, dt);
-    // Never sweep faster than about a chapter per half second, even if the scroll bar is dragged.
-    cur += clamp(damped - cur, -dt * 0.34, dt * 0.34);
+    const damped = smoothDamp(cur, target, 0.06, dt);
+    // Never sweep faster than about a chapter every fifth of a second, even if the scroll bar is dragged.
+    cur += clamp(damped - cur, -dt * 0.9, dt * 0.9);
     if (Math.abs(target - cur) < 0.00006 && Math.abs(vel.v) < 0.0005) { cur = target; vel.v = 0; }
     draw(cur, time);
     updateUi(cur);
@@ -1216,7 +1216,7 @@
       setTimeout(() => { snapping = false; }, 600);
     }
   };
-  const armSnap = () => { clearTimeout(snapTimer); snapTimer = setTimeout(snapCheck, 240); };
+  const armSnap = () => {};   // no idle magnet: it made slow wheel scrolling feel floaty
   window.addEventListener('touchstart', () => { touching = true; }, { passive: true });
   window.addEventListener('touchend', () => { touching = false; armSnap(); }, { passive: true });
   window.addEventListener('touchcancel', () => { touching = false; armSnap(); }, { passive: true });
@@ -1228,7 +1228,7 @@
   const coarsePointer = window.matchMedia('(pointer: coarse)');
   const STEPS = [0, ...CENTERS.slice(1)];
   const wheelLog = [];
-  let locked = false, lastWheel = 0;
+  let locked = false, lastWheel = 0, lastAbs = 0;
   const lineHeight = 32;
   function stepChapter(dir) {
     const p = rawProgress();
@@ -1238,7 +1238,8 @@
     if (target < 0) return false;
     locked = true;
     scrollToY(scrollForProgress(STEPS[target]), function release() {
-      if (performance.now() - lastWheel > 170) locked = false; else setTimeout(release, 60);
+      // Mouse wheels send discrete large steps; trackpad inertia is a tail of small ones.
+      if (lastAbs >= 80 || performance.now() - lastWheel > 170) locked = false; else setTimeout(release, 40);
     });
     return true;
   }
@@ -1249,15 +1250,15 @@
     const dy = event.deltaMode === 1 ? event.deltaY * lineHeight : event.deltaMode === 2 ? event.deltaY * innerHeight : event.deltaY;
     if (!dy || Math.abs(dy) < Math.abs(event.deltaX)) return;
     const now = performance.now(), dir = dy > 0 ? 1 : -1, p = rawProgress();
-    lastWheel = now;
+    lastWheel = now; lastAbs = Math.abs(dy);
     if (p < -0.03 || p > 1.0) { locked = false; return; }
     if (locked) { event.preventDefault(); return; }
     if (anim) stopAnim();
     if (!canStep(dir, p)) return;
     wheelLog.push([now, Math.abs(dy)]);
-    while (wheelLog.length && now - wheelLog[0][0] > 90) wheelLog.shift();
+    while (wheelLog.length && now - wheelLog[0][0] > 150) wheelLog.shift();
     const burst = wheelLog.reduce((sum, e) => sum + e[1], 0);
-    if (burst >= 320 || Math.abs(dy) >= 260) {
+    if (burst >= 280 || Math.abs(dy) >= 260) {
       event.preventDefault();
       wheelLog.length = 0;
       stepChapter(dir);
