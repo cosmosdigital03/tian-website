@@ -4,9 +4,24 @@ Changes to the public website at https://tianvpn.com/ (this repository only). Th
 
 Newest first. Dates are commit dates. An entry records what changed in source, not a guarantee of how the live site looks today.
 
-## 2026-11-09 - Cinematic homepage and separate pages (preview branch `cinematic-redesign`)
+## 2026-11-08 - Frosted glass diamonds, phone layout and reading type (branch `story-phone-diamond`)
 
-Not published until the owner approves. Same palette as the existing site.
+Published with the owner's approval after a preview.
+
+- Entry and Exit: the same eight-sided diamond as before, rebuilt in frosted glass on phone and desktop. What sits behind it is really blurred (shrunk and enlarged, so it works in Safari, which has no canvas filters), with a milky body, a fine sandblasted grain, a soft light inside and a thin bright rim. A realistic cut stone was tried first and rejected by the owner.
+- Gate graphics: a cleaner instrument ring with fine ticks, an orbit that passes behind and in front of the diamond, and rings that always face the viewer, so the two shields in "Two separate views" are round and exactly level.
+- Phone layout, rebuilt: the scene fills the whole space between the header and the words on every slide, centred, nothing cut off and nothing behind the text. The words sit on solid ground at the bottom. Progress dots moved into one row with Skip and Pause. Each shield's label rests on its ring. Short phones drop secondary items. Header is slimmer. The stage now reaches the bottom of the screen, and when Safari's toolbar shrinks the words and controls glide down into that room instead of leaving an empty strip. Slide text no longer overlaps while changing. On slide 01 the camera looks straight at the phone so it sits square to the screen.
+- Last slide: the whole Exit shield sits above the network instead of being cut by the header, and the Entry shield and phone are gone by then. On wide screens moving graphics fade before the text column and the network labels are placed where there is room.
+- The route now appears one leg at a time, so no stray line hangs near the phone.
+- Reading type: all information text is Inter, served from this site (`assets/fonts/inter-latin.woff2`, built from the Inter 4.001 file in the TIAN project by `scripts/build-web-font.cjs`, licence in `licenses/Inter-OFL.txt`), so no font service sees a visitor. Bold headings are unchanged. Sizes and contrast raised across the site: body text 16px or larger, labels at least 12px.
+- Support and the error page now use the shared header, phone menu, footer and stylesheet; the logo no longer overlaps the name on phones. The topic bar now brings the current tab fully into view.
+- Tests: 108 of 108 pass (`node --test tests/*.test.cjs`). The "no remote fonts" test now allows exactly one self-hosted font file.
+- Reviewed in a browser at 375x812, 390x664, 375x553 and 1280x800: all six slides at each phone size; how-it-works, footprint, compare, support, 404 and privacy at phone width; how-it-works, footprint, compare, support on desktop. Also opened in Safari on an iPhone 17 simulator (iOS 26.5): hero and all five slides, touch swipes, toolbar expanded and collapsed.
+- Known gaps: real-device scroll feel; `styles.css` is no longer linked by any page and can be removed.
+
+## 2026-11-08 - Cinematic homepage and separate pages (branch `cinematic-redesign`, published through pull request 7)
+
+Same palette as the existing site.
 
 - Homepage is a scroll-driven story: the camera follows a connection from the device, through the Entry shield (who you are), to a wide view of two points and two information views, then the Exit shield (where you go) and down to the open internet. Built in `story.js` and `story.css` with no libraries.
 - Graphics pass after owner feedback: the phone is now a rounded titanium body with a glass screen showing a stylised TIAN screen (illustration only, not a screenshot of the app); each shield has a segmented gate, glass lens, crystal core, orbiting satellites, ground pedestal and light column. Entry takes connections in, Exit sends them onward.

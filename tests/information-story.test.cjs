@@ -251,7 +251,10 @@ test('The latest narrow-screen hero rule restores one column after the desktop r
 });
 
 test('The revised artwork and typography introduce no remote fonts or presentation vendors', () => {
-  assert.doesNotMatch(css, /@(?:import|font-face)\b/i);
+  assert.doesNotMatch(css, /@import\b/i);
+  const faces = [...css.matchAll(/@font-face\s*\{[^}]*\}/gi)].map(match => match[0]);
+  assert.equal(faces.length, 1, 'Only the one self-hosted reading font');
+  assert.match(faces[0], /url\("assets\/fonts\/inter-latin\.woff2"\)/, 'The reading font must be served from this site');
   for (const node of findAll(document, () => true)) {
     const resource = node.attrs.src ||
       ((node.tag === 'link' && /^(?:stylesheet|preload|preconnect|dns-prefetch)$/.test(node.attrs.rel || '')) || node.tag === 'image' || node.tag === 'use'
@@ -282,3 +285,49 @@ test('A gentle gravity eases the page onto a nearby slide and leaves the middle 
   assert.match(storyJs, /now - lastInput - 150/, 'The pull only starts after the user stops scrolling');
   assert.match(storyJs, /FACE_YAW[\s\S]*FACE_TILT/, 'The phone holds a fixed facing pose after slide 01');
 });
+
+test('The Entry and Exit diamonds keep the eight-sided shape, now in frosted glass', () => {
+  assert.match(storyJs, /const OCT_FACES = /, 'The same eight-sided diamond as before');
+  assert.match(storyJs, /function frostBackdrop\(/, 'What sits behind the glass is really blurred');
+  assert.match(storyJs, /destination-out/, 'The sharp original is lifted out from under the blur');
+  assert.match(storyJs, /function grainPattern\(/, 'The surface has a fine sandblasted grain');
+  assert.doesNotMatch(storyJs, /ctx\.filter\b/, 'Canvas filters are missing from Safari, so the blur must not depend on them');
+  assert.doesNotMatch(storyJs, /followRay|brilliant cut/i, 'A realistic cut stone was rejected by the owner');
+});
+
+test('On phones the scene fills the space above the words and nothing is cut off', () => {
+  assert.match(storyJs, /narrow = W <= 640/, 'The canvas switches layout at the same width as the stylesheet');
+  assert.match(storyJs, /story-compact/, 'Short phones drop secondary items so the scene keeps its room');
+  assert.match(storyJs, /x0: 14, x1: W - 14/, 'The scene is centred across the full width');
+  assert.match(storyJs, /function fitNet\(/, 'The last slide frames the whole exit shield above the network');
+  assert.match(storyCss, /\.story-rail\{top:auto[^}]*flex-direction:row/, 'The progress dots share the bottom row on phones');
+  assert.match(storyCss, /var\(--text-top/, 'A solid shade under the words follows each slide');
+  assert.match(storyCss, /\.skip-more\{display:none\}/, 'The skip link shortens on very narrow phones');
+});
+
+test('Wide screens keep moving graphics clear of the words and level the two shields', () => {
+  assert.match(storyJs, /const textMask = x =>/, 'Moving graphics fade before the text column');
+  assert.match(storyJs, /const roll = -Math\.atan2/, 'The two shields are levelled exactly');
+});
+
+test('Information text is self-hosted Inter at a comfortable size, and headings stay bold display type', () => {
+  assert.ok(fs.statSync(path.join(root, 'assets/fonts/inter-latin.woff2')).size < 130 * 1024, 'The subset stays small');
+  assert.ok(fs.existsSync(path.join(root, 'licenses/Inter-OFL.txt')), 'The font licence ships with the font');
+  assert.match(css, /body\{font:430 16px\/1\.62 var\(--read\)/, 'Body text uses the reading font');
+  assert.match(css, /main p:not\(\.eyebrow\)[^{]*\{font-size:16px!important/, 'Information text has a size floor');
+  assert.match(css, /h1,h2,h3[^{]*\{font-family:var\(--display\);font-weight:750/, 'Headings keep the display type');
+  for (const page of ['index', 'how-it-works', 'footprint', 'platforms', 'compare', 'support', 'privacy', 'terms', '404']) {
+    assert.match(fs.readFileSync(path.join(root, page + '.html'), 'utf8'), /inter-latin\.woff2/, page + ' loads the reading font');
+  }
+});
+
+test('Topic tabs and shared pages sit where they should on phones', () => {
+  assert.match(fs.readFileSync(path.join(root, 'topics.js'), 'utf8'), /getBoundingClientRect/, 'The current tab is measured from the bar itself');
+  for (const page of ['support', '404']) {
+    const html = fs.readFileSync(path.join(root, page + '.html'), 'utf8');
+    assert.match(html, /premium\.css/, page + ' uses the shared stylesheet');
+    assert.match(html, /class="nav-toggle"/, page + ' has the shared phone menu');
+    assert.match(html, /Your footprint/, page + ' lists every topic');
+  }
+});
+

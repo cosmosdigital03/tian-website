@@ -16,7 +16,7 @@ python3 -m http.server 8000
 - `how-it-works.html`, `footprint.html` (the automatic connection snapshot and its `connection-*.js` modules), `platforms.html` and `compare.html` (comparison plus FAQ) each open as their own page and use `premium.css` and `app.js`.
 - Support, privacy, terms and error pages retain the shared `styles.css` stylesheet and link to the pages above.
 
-The homepage uses `premium.css`, `story.css`, `app.js` and `story.js`. Support, privacy, and error pages retain the shared `styles.css` stylesheet. The header and footer use the supplied TIAN emblem. The Solving orb adapts Thinking Orbs under the MIT license; see `licenses/thinking-orbs-MIT.txt`. Fonts are supplied by the visitor's system. Headings use a retro-inspired system serif stack, with sans-serif body and interface text.
+The homepage uses `premium.css`, `story.css`, `app.js` and `story.js`. Support and error pages use `premium.css` as well; privacy and terms carry their own styles. Information text is self-hosted Inter (`assets/fonts/inter-latin.woff2`, rebuilt with `scripts/build-web-font.cjs`). The header and footer use the supplied TIAN emblem. The Solving orb adapts Thinking Orbs under the MIT license; see `licenses/thinking-orbs-MIT.txt`. Fonts are supplied by the visitor's system. Headings use a retro-inspired system serif stack, with sans-serif body and interface text.
 
 The divided-picture animation shows distinct relay information views, not separate packet paths or payload reassembly. Both views remain inside one shared-service frame. Pause motion and reduced-motion preferences retain a clear static explanation.
 

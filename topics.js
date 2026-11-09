@@ -4,5 +4,6 @@
   const tabs = document.querySelector('.topic-tabs');
   const current = tabs && tabs.querySelector('[aria-current="page"]');
   if (!tabs || !current) return;
-  tabs.scrollLeft = Math.max(0, current.offsetLeft - (tabs.clientWidth - current.offsetWidth) / 2);
+  const start = current.getBoundingClientRect().left - tabs.getBoundingClientRect().left + tabs.scrollLeft;
+  tabs.scrollLeft = Math.max(0, start - (tabs.clientWidth - current.offsetWidth) / 2);
 })();

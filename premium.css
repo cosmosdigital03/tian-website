@@ -237,7 +237,7 @@ p a,.privacy-method a,.connection-note a,.details-disclosure a{text-decoration:u
 /* Topic bar: always one tap from any other topic, scrolls sideways on phones. */
 :root{--header-h:97px}
 @media(max-width:850px){:root{--header-h:81px}}
-@media(max-width:640px){:root{--header-h:76px}}
+@media(max-width:640px){:root{--header-h:65px}}
 .topic-bar{position:sticky;top:var(--header-h);z-index:15;background:rgba(5,11,22,.9);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid rgba(126,200,255,.14)}
 .topic-bar-inner{display:flex;align-items:center;gap:18px;min-height:56px}
 .topic-home{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding-right:18px;border-right:1px solid rgba(126,200,255,.2);font-size:13px;font-weight:600;color:#c0e5ff}
@@ -249,3 +249,64 @@ p a,.privacy-method a,.connection-note a,.details-disclosure a{text-decoration:u
 .topic-tabs a[aria-current="page"]{color:#08182b;background:#c0e5ff;border-color:#d4edff;font-weight:650}
 @media(max-width:640px){.topic-bar-inner{gap:10px;padding-inline:0}.topic-home{padding-right:12px;font-size:12px}.topic-bar .wrap{width:calc(100% - 28px)}}
 @media(max-width:640px){.topic-tabs{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 22px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 22px),transparent 100%);padding-inline:6px}}
+
+/* Reading type. Information text uses Inter, served from this site so no font service sees a visitor.
+   Headings keep the bold display type; addresses keep a code face. */
+@font-face{font-family:"TIAN Text";src:url("assets/fonts/inter-latin.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+:root{--read:"TIAN Text",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--mono:var(--read);--muted:#c2d0dd;--faint:#a5b8ca}
+body{font:430 16px/1.62 var(--read);font-optical-sizing:auto}
+button,input{font-family:var(--read)}
+.eyebrow{font:600 12.5px/1.5 var(--read);letter-spacing:.13em;color:#b4dcf5}
+.signal-ip dd>span,.device-identity dd>span{font-family:var(--code)}
+@media(max-width:640px){
+  .header-inner{height:64px}
+  .brand{font-size:23px}
+  .brand-logo{width:40px;height:40px}
+}
+
+/* Reading floor: everything that informs is comfortable to read, on every screen. These sit after
+   many older phone rules, so the sizes are marked important on purpose. */
+main p:not(.eyebrow):not(.privacy-kicker),main li,main dd,main td,main caption,main blockquote{font-size:16px!important;line-height:1.58;color:#c9d7e4}
+main dt,main small,.launch-note{font-size:13.5px!important;line-height:1.45;color:#b3c4d3}
+main th{font-size:15px!important;color:#dfeaf4}
+main summary{font-size:16.5px!important;font-weight:600}
+main h4{font-size:16.5px!important}
+main a.text-link{font-size:15px!important}
+.more-topics .section-heading a{font-size:15px}
+.eyebrow{font-size:12.5px!important}
+.knowledge-number,.feature-index,.signal-index,.signal-tag,.details-card-label,.details-badge,.details-badge span,.privacy-kicker,.schematic-label,.route-topline,.route-topline span,.platform-badge,.platform-meta,.explore-index,.story-topline,.transport-caption>span,.architecture-tabs button>span{font-family:var(--read);font-size:12px!important;font-weight:600;letter-spacing:.09em}
+.signal-tag,.signal-index,.details-card-label,.privacy-kicker,.schematic-label{color:#a9c2d6}
+.comparison-table thead th:first-child,.comparison-table td:before{font-family:var(--read);font-size:12px!important;font-weight:600;letter-spacing:.08em;color:#a9c2d6}
+.compare-standard,.compare-double{color:#c2d0dd!important}
+.compare-tian{color:#e3eff8!important}
+.explore-go,.topic-home{font-size:14.5px!important}
+.topic-tabs a{font-size:14.5px!important}
+.architecture-tabs button{font-size:14.5px!important}
+.button{font-size:15px!important;font-weight:650}
+.closing-note{font-size:15px!important;color:#c9d7e4!important}
+.footer p,.copyright{font-size:14px!important;color:#a9bccc!important}
+.footer nav a{font-size:15px!important;color:#c9d7e4}
+.mobile-nav a{font-size:17px!important}
+@media(max-width:640px){
+  .eyebrow{font-size:12px!important;letter-spacing:.12em}
+  main p:not(.eyebrow):not(.privacy-kicker),main li,main dd,main td{font-size:16.5px!important;line-height:1.55}
+}
+.nowrap{white-space:nowrap}
+
+/* Support and the page-not-found screen share the site header and footer. */
+.prose{max-width:1040px;margin-inline:auto;padding-top:72px;padding-bottom:90px;text-align:center}
+.prose .eyebrow{color:#b4dcf5;margin-bottom:18px}
+.prose h1{font-family:var(--display);font-size:clamp(42px,6vw,66px);font-weight:750;line-height:1.05;letter-spacing:-.045em;margin:0 auto 22px;max-width:800px;color:#f2f9ff}
+.prose .intro{font-size:20px!important;line-height:1.55;color:#dcebf7;max-width:780px;margin:0 auto 28px}
+.prose a:not(.button):not(.text-link){color:#e3eff8;text-decoration:underline;text-underline-offset:4px}
+.prose .actions{justify-content:center}
+.support-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:52px;text-align:left}
+.support-card{padding:34px;border:1px solid rgba(92,168,230,.24);border-radius:18px;background:radial-gradient(ellipse 68% 92% at 4% 50%,rgba(42,118,196,.42) 0%,rgba(22,60,106,.22) 44%,transparent 74%),linear-gradient(160deg,#091526 0%,#050c18 58%,#030811 100%)}
+.support-card h2{font-family:var(--display);font-size:28px;font-weight:750;line-height:1.2;letter-spacing:-.035em;margin:0 0 14px;color:#eef6ff}
+.support-card p{margin:0 0 14px}
+.support-card p:last-child{margin-bottom:0}
+.error-page{min-height:calc(100vh - 280px)}
+.error-page .actions{margin-top:32px}
+@media(max-width:760px){.support-grid{grid-template-columns:1fr;margin-top:38px}.support-card{padding:26px 22px}}
+@media(max-width:640px){.prose{padding-top:44px;padding-bottom:56px}.prose .intro{font-size:18px!important}}
+

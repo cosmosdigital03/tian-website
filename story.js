@@ -24,9 +24,10 @@
   const smooth = t => t * t * (3 - 2 * t);
   const fade = (p, a, b, e) => smooth(clamp((p - a) / e)) * smooth(clamp((b - p) / e));
   const rgba = (c, a) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
-  const COL = { blue: [126, 200, 255], mint: [100, 244, 172], ice: [205, 234, 255], cyan: [92, 225, 230], white: [255, 255, 255] };
+  const COL = { blue: [126, 200, 255], mint: [100, 244, 172], ice: [205, 234, 255], cyan: [92, 225, 230], white: [255, 255, 255], deepBlue: [6, 22, 52], deepMint: [4, 34, 34] };
   const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
-  const SANS = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif';
+  const SANS = '"TIAN Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const APP = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif';   // the iOS app's own type, on the phone screen
 
   // ---- vector helpers -------------------------------------------------------------
   const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -240,37 +241,82 @@
   const P = p => { const c = toCam(p); return c[2] < NEAR ? null : proj(c); };
   const offsetOf = p => { const c = toCam(p); if (c[2] < NEAR) return null; const k = cam.focal / c[2]; return [c[0] * k, -c[1] * k, k]; };
 
+  function applyRoll(a) {
+    if (!a) return;
+    const c = Math.cos(a), s = Math.sin(a), r = cam.r, u = cam.u;
+    cam.r = add(mul(r, c), mul(u, s));
+    cam.u = add(mul(r, -s), mul(u, c));
+  }
+  // How far each subject reaches [up, down, sideways] from its centre, used to fill a phone's scene area.
+  const PHONE_EXT = [1.64, 1.64, 0.86];
+  const GATE_EXT = [3.04, 3.04, 3.04];
   // Fit one subject (gate or phone) so it fills the free rectangle at a sensible size.
-  function fitNode(pos0, look, node, R, fr) {
-    setBasis(pos0, look);
-    const c = toCam(node);
-    if (c[2] < NEAR) return null;
-    const rPx = Math.min((fr.x1 - fr.x0) * 0.5, (fr.y1 - fr.y0) * 0.5) * 0.86;
-    const wantK = Math.min(rPx, 320) / R;
-    const f = clamp((cam.focal / c[2]) / wantK, 0.3, 4);
-    const pos = add(node, mul(sub(pos0, node), f));
+  function fitNode(pos0, look, node, R, fr, ext) {
+    const boxW = fr.x1 - fr.x0, boxH = fr.y1 - fr.y0;
+    const wantK = narrow ? Math.min(boxH / (ext[0] + ext[1]), boxW / (2 * ext[2])) : Math.min(Math.min(boxW, boxH) * 0.43, 320) / R;
+    let pos = pos0;
+    for (let i = 0; i < 2; i++) {              // twice: the view direction changes a little as the camera moves
+      setBasis(pos, look);
+      const c = toCam(node);
+      if (c[2] < NEAR) return null;
+      pos = add(node, mul(sub(pos, node), clamp((cam.focal / c[2]) / wantK, 0.2, 9)));
+    }
     setBasis(pos, look);
     const o = offsetOf(node);
-    return o ? { pos, cx: (fr.x0 + fr.x1) / 2 - o[0], cy: (fr.y0 + fr.y1) / 2 + (narrow ? 8 : 26) - o[1] } : null;
+    if (!o) return null;
+    const midX = (fr.x0 + fr.x1) / 2;
+    const y = narrow ? fr.y0 + (boxH - (ext[0] + ext[1]) * o[2]) / 2 + ext[0] * o[2] : (fr.y0 + fr.y1) / 2 + 26;
+    return { pos, cx: midX - o[0], cy: y - o[1], roll: 0 };
   }
-  // Fit both shields so they sit side by side inside the free rectangle.
+  // Fit both shields side by side inside the free rectangle, rolled a touch so they sit exactly level.
   function fitTwo(pos0, look, a, b, fr) {
     setBasis(pos0, look);
     const pivot = mix(a, b, 0.5);
     const oa = offsetOf(a), ob = offsetOf(b);
     if (!oa || !ob) return null;
-    const span = Math.max(30, Math.abs(ob[0] - oa[0]));
-    const f = clamp(span / ((fr.x1 - fr.x0) * (narrow ? 0.62 : 0.6)), 0.3, 5);
+    const span = Math.max(30, Math.hypot(ob[0] - oa[0], ob[1] - oa[1]));
+    const f = clamp(span / ((fr.x1 - fr.x0) * (narrow ? 0.5 : 0.56)), 0.3, 9);
     const pos = add(pivot, mul(sub(pos0, pivot), f));
     setBasis(pos, look);
-    const pa = offsetOf(a), pb = offsetOf(b);
+    let pa = offsetOf(a), pb = offsetOf(b);
     if (!pa || !pb) return null;
-    return { pos, cx: (fr.x0 + fr.x1) / 2 - (pa[0] + pb[0]) / 2, cy: lerp(fr.y0, fr.y1, narrow ? 0.62 : 0.6) - (pa[1] + pb[1]) / 2 };
+    const roll = -Math.atan2(pb[1] - pa[1], pb[0] - pa[0]);
+    applyRoll(roll);
+    pa = offsetOf(a); pb = offsetOf(b);
+    if (!pa || !pb) return null;
+    return { pos, cx: (fr.x0 + fr.x1) / 2 - (pa[0] + pb[0]) / 2, cy: twoLineY(fr) - (pa[1] + pb[1]) / 2, roll };
+  }
+  // Size and height of the pair of shields in "two separate views".
+  const twoCardPx = () => (narrow ? 66 : 88), twoFootPx = () => (narrow ? 44 : 92);
+  const twoRingPx = fr => {
+    const boxH = fr.y1 - fr.y0;
+    return narrow ? Math.max(40, Math.min((fr.x1 - fr.x0) * 0.215, (boxH - twoCardPx() - twoFootPx()) / 2)) : Math.min((fr.x1 - fr.x0) * 0.2, 128);
+  };
+  function twoLineY(fr) {
+    const ring = twoRingPx(fr), boxH = fr.y1 - fr.y0;
+    return fr.y0 + Math.max(0, (boxH - twoCardPx() - 2 * ring - twoFootPx()) / 2) + twoCardPx() + ring;
+  }
+  // The open internet: the exit shield at the top of the free area and the network spread out under it.
+  const netRingPx = () => (narrow ? 34 : 62);
+  function fitNet(pos0, look, fr) {
+    setBasis(pos0, look);
+    const pivot = mix(EXIT, NET_CENTER, 0.5);
+    const a0 = offsetOf(EXIT), b0 = offsetOf(NET_CENTER);
+    if (!a0 || !b0) return null;
+    const boxH = fr.y1 - fr.y0;
+    const f = clamp(Math.abs(b0[1] - a0[1]) / (boxH * (narrow ? 0.56 : 0.54)), 0.4, 9);
+    const pos = add(pivot, mul(sub(pos0, pivot), f));
+    setBasis(pos, look);
+    const a = offsetOf(EXIT), b = offsetOf(NET_CENTER);
+    if (!a || !b) return null;
+    return { pos, cx: (fr.x0 + fr.x1) / 2 - (a[0] + b[0]) / 2, cy: fr.y0 + netRingPx() * 1.12 + 4 - a[1], roll: 0 };
   }
 
   function pose(p) {
     let pos0 = hermite(p, k => k.pos);
-    const look = hermite(p, k => k.look);
+    const lookPath = hermite(p, k => k.look);
+    // On slide 01 the camera looks straight at the phone, so its edges stay square to the screen.
+    const look = mix(lookPath, DEVICE, smooth(clamp((p - 0.1) / 0.06)) * (1 - smooth(clamp((p - 0.25) / 0.05))));
     let i = 0;
     while (i < CENTERS.length - 2 && p > CENTERS[i + 1]) i++;
     const t = smooth(clamp((p - CENTERS[i]) / (CENTERS[i + 1] - CENTERS[i])));
@@ -283,28 +329,31 @@
       smooth(clamp((p - 0.1) / 0.06)) * (1 - smooth(clamp((p - 0.25) / 0.07))),
       smooth(clamp((p - 0.26) / 0.08)) * (1 - smooth(clamp((p - 0.42) / 0.08))),
       smooth(clamp((p - 0.42) / 0.08)) * (1 - smooth(clamp((p - 0.60) / 0.08))),
-      smooth(clamp((p - 0.60) / 0.08)) * (1 - smooth(clamp((p - 0.80) / 0.07)))
+      smooth(clamp((p - 0.60) / 0.08)) * (1 - smooth(clamp((p - 0.80) / 0.07))),
+      smooth(clamp((p - 0.82) / 0.08))
     ];
     const total = weights.reduce((s, w) => s + w, 0);
     const scale = total > 1 ? 1 / total : 1;
-    let pos = [0, 0, 0], cx = 0, cy = 0, used = 0;
+    let pos = [0, 0, 0], cx = 0, cy = 0, roll = 0, used = 0;
     const fits = [
-      () => fitNode(pos0, look, DEVICE, 1.9, free[0]),
-      () => fitNode(pos0, look, DEVICE, 2.7, free[1]),
-      () => fitNode(pos0, look, ENTRY, 3.1, free[2]),
+      () => fitNode(pos0, look, DEVICE, 1.9, free[0], PHONE_EXT),
+      () => fitNode(pos0, look, DEVICE, 2.7, free[1], PHONE_EXT),
+      () => fitNode(pos0, look, ENTRY, 3.1, free[2], GATE_EXT),
       () => fitTwo(pos0, look, ENTRY, EXIT, free[3]),
-      () => fitNode(pos0, look, EXIT, 3.1, free[4])
+      () => fitNode(pos0, look, EXIT, 3.1, free[4], GATE_EXT),
+      () => fitNet(pos0, look, free[5])
     ];
     weights.forEach((w, n) => {
       if (w * scale < 0.002 || !fits[n] || !free[n]) return;
       const fit = fits[n]();
       if (!fit) return;
       const k = w * scale;
-      pos = add(pos, mul(fit.pos, k)); cx += fit.cx * k; cy += fit.cy * k; used += k;
+      pos = add(pos, mul(fit.pos, k)); cx += fit.cx * k; cy += fit.cy * k; roll += fit.roll * k; used += k;
     });
     pos = add(pos, mul(pos0, 1 - used));
     cx += cx0 * (1 - used); cy += cy0 * (1 - used);
     setBasis(pos, look);
+    applyRoll(roll);
     cam.cx = cx; cam.cy = cy;
     return weights.map(w => w * scale);
   }
@@ -357,9 +406,9 @@
   }
   const ringClosed = (centre, radius, steps, rotY, tiltX) => ringPoints(centre, radius, steps, rotY, tiltX).slice(0, -1);
   // Circle lying flat on the ground (xz plane).
-  const flatRing = (centre, radius, steps = 56) => Array.from({ length: steps }, (_, i) => {
+  const flatRing = (centre, radius, steps = 56, y = GROUND) => Array.from({ length: steps }, (_, i) => {
     const a = (i / steps) * TAU;
-    return [centre[0] + Math.cos(a) * radius, GROUND, centre[2] + Math.sin(a) * radius];
+    return [centre[0] + Math.cos(a) * radius, y, centre[2] + Math.sin(a) * radius];
   });
   function glow(q, radius, colour, alpha) {
     if (radius < 0.5 || alpha <= 0.003) return;
@@ -380,25 +429,25 @@
 
   // ---- information cards (screen space) ---------------------------------------------
   function layoutCards(list, fr) {
-    const fs = narrow ? 10 : 11;
+    const fs = narrow ? 11 : 12;
     list.forEach(c => {
-      ctx.font = `700 ${fs}px ${MONO}`;
-      let w = ctx.measureText(c.title).width;
-      ctx.font = `500 ${fs + 1}px ${SANS}`;
-      c.lines.forEach(l => { w = Math.max(w, ctx.measureText(l.text).width + 14); });
-      c.w = Math.ceil(w + 26);
-      c.h = Math.ceil(27 + fs + c.lines.length * (fs + 7));
+      ctx.font = `650 ${fs}px ${SANS}`;
+      let w = ctx.measureText(c.title).width + fs * 0.9;
+      ctx.font = `500 ${fs + 2}px ${SANS}`;
+      c.lines.forEach(l => { w = Math.max(w, ctx.measureText(l.text).width); });
+      c.w = Math.ceil(w + 30);
+      c.h = Math.ceil(26 + fs + c.lines.length * (fs + 8));
       c.fs = fs;
       c.x = clamp(c.ax - c.w / 2, fr.x0, Math.max(fr.x0, fr.x1 - c.w));
-      c.y = Math.max(fr.y0 + 4, c.ay - c.h - (narrow ? 14 : 22));
+      c.y = Math.max(fr.y0 + 2, c.ay - c.h - (narrow ? 10 : 22));
     });
     if (list.length === 2) {
       const [a, b] = list[0].ax <= list[1].ax ? list : [list[1], list[0]];
-      const gap = 10, over = a.x + a.w + gap - b.x;
+      const gap = 8, over = a.x + a.w + gap - b.x;
       if (over > 0) {
         a.x = Math.max(fr.x0, a.x - over / 2);
         b.x = Math.min(Math.max(fr.x0, fr.x1 - b.w), b.x + over / 2);
-        if (a.x + a.w + gap > b.x) b.y = Math.max(fr.y0 + 4, a.y - b.h - 10);
+        if (a.x + a.w + gap > b.x) b.y = Math.max(fr.y0 + 4, a.y - b.h - 10);    // still no room side by side: stack them
       }
     }
   }
@@ -413,18 +462,51 @@
     ctx.fillStyle = rgba(c.colour, 1);
     ctx.beginPath(); ctx.arc(c.ax, c.ay, 3, 0, TAU); ctx.fill();
     roundedPath(ctx, c.x, c.y, c.w, c.h, 10);
-    ctx.fillStyle = 'rgba(5,13,26,0.9)'; ctx.fill();
+    ctx.fillStyle = 'rgba(5,13,26,0.92)'; ctx.fill();
     ctx.strokeStyle = rgba(c.colour, 0.65); ctx.lineWidth = 1; ctx.stroke();
     ctx.fillStyle = rgba(c.colour, 1);
     ctx.fillRect(c.x + 1, c.y + 10, 3, c.h - 20);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.font = `700 ${c.fs}px ${MONO}`;
-    ctx.fillText(c.title, c.x + 14, c.y + 8 + c.fs + 4);
+    ctx.font = `650 ${c.fs}px ${SANS}`;
+    ctx.fillText(c.title, c.x + 14, c.y + 9 + c.fs + 3);
     c.lines.forEach((l, i) => {
-      ctx.font = `${l.dim ? 400 : 600} ${c.fs + 1}px ${SANS}`;
-      ctx.fillStyle = l.dim ? 'rgba(168,190,210,0.85)' : 'rgba(236,246,255,0.97)';
-      ctx.fillText(l.text, c.x + 14, c.y + 8 + c.fs + 4 + 7 + (i + 1) * (c.fs + 7) - 2);
+      ctx.font = `${l.dim ? 450 : 600} ${c.fs + 2}px ${SANS}`;
+      ctx.fillStyle = l.dim ? 'rgba(186,205,222,0.92)' : 'rgba(240,248,255,0.98)';
+      ctx.fillText(l.text, c.x + 14, c.y + 9 + c.fs + 3 + 6 + (i + 1) * (c.fs + 8) - 2);
     });
+    ctx.restore();
+  }
+  // Phones: one compact label resting on the top of the ring, so the diamond keeps all the room.
+  function drawChip(c, alpha, fr) {
+    if (alpha <= 0.02) return;
+    const fs = 13, gap = 10;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `600 ${fs}px ${SANS}`;
+    const w1 = ctx.measureText(c.lines[0].text).width;
+    ctx.font = `450 ${fs}px ${SANS}`;
+    const w2 = ctx.measureText(c.lines[1].text).width;
+    const w = 16 + 7 + 8 + w1 + gap * 2 + 1 + w2 + 16, h = 32;
+    const x = clamp(c.ax - w / 2, fr.x0, Math.max(fr.x0, fr.x1 - w)), y = Math.max(fr.y0 - 4, c.ay + 6 - h / 2);
+    roundedPath(ctx, x, y, w, h, h / 2);
+    ctx.fillStyle = 'rgba(5,13,26,0.94)'; ctx.fill();
+    ctx.strokeStyle = rgba(c.colour, 0.7); ctx.lineWidth = 1; ctx.stroke();
+    const mid = y + h / 2;
+    let cx = x + 16;
+    ctx.fillStyle = rgba(c.colour, 1);
+    ctx.beginPath(); ctx.arc(cx + 3.5, mid, 3.5, 0, TAU); ctx.fill();
+    cx += 7 + 8;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = `600 ${fs}px ${SANS}`;
+    ctx.fillStyle = 'rgba(240,248,255,0.98)';
+    ctx.fillText(c.lines[0].text, cx, mid + 0.5);
+    cx += w1 + gap;
+    ctx.fillStyle = 'rgba(205,234,255,0.3)';
+    ctx.fillRect(cx, mid - 7, 1, 14);
+    cx += 1 + gap;
+    ctx.font = `450 ${fs}px ${SANS}`;
+    ctx.fillStyle = 'rgba(186,205,222,0.95)';
+    ctx.fillText(c.lines[1].text, cx, mid + 0.5);
     ctx.restore();
   }
   // Bracket that rises from the foot of each shield's pedestal and joins them underneath.
@@ -437,21 +519,21 @@
     ctx.moveTo(a.x, a.y + 5); ctx.lineTo(a.x, yLine); ctx.lineTo(b.x, yLine); ctx.lineTo(b.x, b.y + 5);
     ctx.stroke();
     [a, b].forEach(e => { ctx.fillStyle = 'rgba(214,236,255,0.95)'; ctx.beginPath(); ctx.arc(e.x, e.y + 5, 2.6, 0, TAU); ctx.fill(); });
-    const text = narrow ? 'ONE CONNECTION' : 'ONE SEAMLESS CONNECTION';
-    ctx.font = `700 ${narrow ? 9 : 10}px ${MONO}`;
-    const w = ctx.measureText(text).width + 24;
+    const text = 'ONE SEAMLESS CONNECTION';
+    ctx.font = `650 ${narrow ? 10 : 11}px ${SANS}`;
+    const w = ctx.measureText(text).width + 26;
     const x = (a.x + b.x) / 2 - w / 2;
-    roundedPath(ctx, x, yLine - 11, w, 22, 11);
+    roundedPath(ctx, x, yLine - 12, w, 24, 12);
     ctx.fillStyle = 'rgba(5,13,26,0.96)'; ctx.fill();
     ctx.strokeStyle = 'rgba(205,234,255,0.6)'; ctx.stroke();
-    ctx.fillStyle = 'rgba(214,236,255,0.97)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(224,241,255,0.98)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(text, (a.x + b.x) / 2, yLine + 0.5);
     ctx.restore();
   }
   function label(text, at, colour, alpha) {
     const q = P(at);
     if (!q || alpha <= 0.02) return;
-    ctx.font = `700 ${clamp(q[2] * 0.8, 9, 13)}px ${MONO}`;
+    ctx.font = `650 ${clamp(q[2] * 0.8, 10, 13)}px ${SANS}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = rgba(colour, alpha);
     ctx.fillText(text, q[0], q[1]);
@@ -492,138 +574,285 @@
       }
     }
   }
-  function drawFans(p, t) {
-    const eAmt = fade(p, 0.47, 0.65, 0.05), xAmt = eAmt;
-    const fan = (apex, corners, colour, amt) => {
-      if (amt <= 0.01) return;
-      const pts = corners.map(P);
-      const a = P(apex);
-      if (!a || pts.some(q => !q)) return;
-      const mid = pts.reduce((m, q) => [m[0] + q[0] / pts.length, m[1] + q[1] / pts.length], [0, 0]);
-      const g = ctx.createLinearGradient(a[0], a[1], mid[0], mid[1]);
-      g.addColorStop(0, rgba(colour, 0.2 * amt));
-      g.addColorStop(1, rgba(colour, 0.015 * amt));
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(a[0], a[1]);
-      pts.forEach(q => ctx.lineTo(q[0], q[1]));
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = rgba(colour, 0.34 * amt); ctx.lineWidth = 1;
-      ctx.setLineDash([5, 7]); ctx.lineDashOffset = -t * 14;
-      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(pts[0][0], pts[0][1]); ctx.moveTo(a[0], a[1]); ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]); ctx.stroke();
-      ctx.setLineDash([]);
-    };
-    fan(ENTRY, [add(ENTRY, [-4, 3, 7.5]), add(ENTRY, [4, 3, 7.5]), add(ENTRY, [4, -3, 7.5]), add(ENTRY, [-4, -3, 7.5])], COL.blue, eAmt);
-    fan(EXIT, [add(EXIT, [-4, 3, -8]), add(EXIT, [4, 3, -8]), add(EXIT, [4, -3, -8]), add(EXIT, [-4, -3, -8])], COL.mint, xAmt);
+  // On wide screens anything moving fades out before it reaches the column of words.
+  let maskRect = null;
+  const textMask = x => {
+    if (narrow || !maskRect) return 1;
+    return maskRect.textLeft ? smooth(clamp((x - (maskRect.x0 - 54)) / 70)) : smooth(clamp((maskRect.x1 + 54 - x) / 70));
+  };
+  // The route shows one leg at a time, so nothing hangs in the air before the story reaches it.
+  const legs = [1, 0, 0];
+  function updateLegs(p) {
+    const gone = 1 - smooth(clamp((p - 0.8) / 0.06));     // by the last slide only the exit and the network remain
+    legs[0] = smooth(clamp((p - 0.235) / 0.05)) * (1 - 0.45 * smooth(clamp((p - 0.5) / 0.08))) * gone;
+    legs[1] = smooth(clamp((p - 0.43) / 0.08)) * gone;
+    legs[2] = smooth(clamp((p - 0.79) / 0.07));
   }
+  const legAt = s => (s < sEntry ? legs[0] : s > sExit ? legs[2] : legs[1]);
   function drawPathLine() {
     const cut = (from, to) => path.filter((_, i) => { const s = (i / (SAMPLES - 1)) * totalLength; return s >= from && s <= to; });
+    ctx.save();
+    if (!narrow && maskRect) {
+      ctx.beginPath();
+      if (maskRect.textLeft) ctx.rect(maskRect.x0 - 20, 0, W, H); else ctx.rect(0, 0, maskRect.x1 + 20, H);
+      ctx.clip();
+    }
     ctx.setLineDash([2, 9]);
-    polyline(cut(0, sEntry), COL.blue, 0.5, 1.4);
-    polyline(cut(sEntry, sExit), COL.ice, 0.32, 1.4);
-    polyline(cut(sExit, totalLength), COL.mint, 0.5, 1.4);
+    polyline(cut(0, sEntry), COL.blue, 0.5 * legs[0], 1.4);
+    polyline(cut(sEntry, sExit), COL.ice, 0.32 * legs[1], 1.4);
+    polyline(cut(sExit, totalLength), COL.mint, 0.5 * legs[2], 1.4);
     ctx.setLineDash([]);
+    ctx.restore();
   }
 
-  // A shield gate: segmented ring, glass lens, crystal core, orbiting satellites, ground pedestal.
+  // ---- the frosted glass diamond ----------------------------------------------------------
+  // The same eight-sided diamond as before, now in frosted glass: whatever is behind it is really
+  // blurred, a milky translucent body catches a soft light, and a glow sits inside it.
   const OCT = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
   const OCT_FACES = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [0, 4, 3], [4, 1, 3], [1, 5, 3], [5, 0, 3]];
-  function drawShield(pos, colour, t, show, seed, entry) {
+  const FROST_LIGHT = norm([-0.5, 0.72, 0.5]);
+  const blurLayers = [0, 1].map(() => ({ a: document.createElement('canvas'), b: document.createElement('canvas'), aw: 0, ah: 0 }));
+  let frameCount = 0;
+  let grain = null;
+  function grainPattern() {
+    if (grain !== null) return grain;
+    grain = false;
+    try {
+      const tile = document.createElement('canvas');
+      tile.width = tile.height = 160;
+      const g = tile.getContext('2d'), img = g.createImageData(160, 160), r = rng(4242);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = r();
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = v > 0.5 ? 255 : 0;
+        img.data[i + 3] = Math.abs(v - 0.5) * 92;
+      }
+      g.putImageData(img, 0, 0);
+      grain = ctx.createPattern(tile, 'repeat') || false;
+      if (grain && grain.setTransform && window.DOMMatrix) grain.setTransform(new DOMMatrix([1 / dpr, 0, 0, 1 / dpr, 0, 0]));
+    } catch (e) { grain = false; }
+    return grain;
+  }
+  // A true backdrop blur that works in every browser: shrink what is behind the glass, then grow it back.
+  // Copying the canvas is the expensive part, so the two diamonds take turns and phones refresh less often.
+  function frostBackdrop(layer, x, y, w, h, alpha) {
+    const L = blurLayers[layer];
+    const a = L.a.getContext && L.a.getContext('2d'), b = L.b.getContext && L.b.getContext('2d');
+    if (!a || !b) return;
+    const X = Math.max(0, x), Y = Math.max(0, y), R = Math.min(W, x + w), B = Math.min(H, y + h);
+    const rw = R - X, rh = B - Y;
+    if (rw < 2 || rh < 2) return;
+    const aw = Math.max(2, Math.ceil(rw / 3)), ah = Math.max(2, Math.ceil(rh / 3));
+    const stale = L.aw === 0 || Math.abs(L.aw - aw) > 6 || Math.abs(L.ah - ah) > 6;
+    if (stale || (frameCount + layer) % (narrow ? 3 : 2) === 0) {
+      const bw = Math.max(2, Math.ceil(rw / 18)), bh = Math.max(2, Math.ceil(rh / 18));
+      if (L.a.width < aw || L.a.height < ah) { L.a.width = aw + 40; L.a.height = ah + 40; }
+      if (L.b.width < bw || L.b.height < bh) { L.b.width = bw + 20; L.b.height = bh + 20; }
+      a.globalCompositeOperation = 'copy'; b.globalCompositeOperation = 'copy';
+      a.drawImage(canvas, X * dpr, Y * dpr, rw * dpr, rh * dpr, 0, 0, aw, ah);
+      b.drawImage(L.a, 0, 0, aw, ah, 0, 0, bw, bh);
+      a.drawImage(L.b, 0, 0, bw, bh, 0, 0, aw, ah);
+      L.aw = aw; L.ah = ah;
+    }
+    // The stage canvas is transparent, so the sharp original has to be lifted out from under the blur.
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(X, Y, rw, rh);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(L.a, 0, 0, L.aw, L.ah, X, Y, rw, rh);
+    ctx.globalAlpha = 1;
+  }
+  function hull(points) {
+    const pts = points.map(q => [q[0], q[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const turn = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    pts.forEach(p => { while (lo.length > 1 && turn(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); });
+    pts.slice().reverse().forEach(p => { while (up.length > 1 && turn(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); });
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+  function tracePoints(pts) {
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+  }
+  function drawDiamond(pos, S, rot, colour, deep, show, pulse, layer) {
+    const R = 1.34 * S, H = 1.81 * S, cr = Math.cos(rot), sr = Math.sin(rot);
+    const V = OCT.map(v => [pos[0] + (v[0] * cr + v[2] * sr) * R, pos[1] + v[1] * H, pos[2] + (-v[0] * sr + v[2] * cr) * R]);
+    const Q = V.map(P);
+    const centre = P(pos);
+    if (!centre || Q.some(q => !q)) return;
+    const size = centre[2] * R;
+    const faces = OCT_FACES.map(idx => {
+      const a = V[idx[0]], m = mul(add(add(a, V[idx[1]]), V[idx[2]]), 1 / 3);
+      let n = norm(cross(sub(V[idx[1]], a), sub(V[idx[2]], a)));
+      if (dot(n, sub(m, pos)) < 0) n = mul(n, -1);
+      return { idx, n, seen: dot(n, sub(cam.pos, m)) > 0 };
+    }).filter(f => f.seen);
+    const outline = hull(Q);
+    const xs = outline.map(p => p[0]), ys = outline.map(p => p[1]);
+    const x0 = Math.floor(Math.min(...xs)) - 2, y0 = Math.floor(Math.min(...ys)) - 2;
+    const w = Math.ceil(Math.max(...xs)) + 2 - x0, h = Math.ceil(Math.max(...ys)) + 2 - y0;
+    const milk = mix(colour, COL.white, 0.74);
+    ctx.save();
+    tracePoints(outline);
+    ctx.clip();
+    if (size > 13) frostBackdrop(layer, x0, y0, w, h, show);
+    // the glass's own colour, a little deeper toward the foot
+    const veil = ctx.createLinearGradient(x0, y0, x0, y0 + h);
+    veil.addColorStop(0, rgba(mix(deep, colour, 0.46), 0.5 * show));
+    veil.addColorStop(1, rgba(mix(deep, colour, 0.22), 0.6 * show));
+    ctx.fillStyle = veil;
+    ctx.fillRect(x0, y0, w, h);
+    // light gathered inside the glass, breathing very slowly
+    ctx.globalCompositeOperation = 'lighter';
+    const coreY = centre[1] + h * 0.05;
+    const core = ctx.createRadialGradient(centre[0], coreY, 0, centre[0], coreY, Math.max(h, w) * 0.62);
+    core.addColorStop(0, rgba(mix(colour, COL.white, 0.3), (0.46 + 0.16 * pulse) * show));
+    core.addColorStop(0.45, rgba(colour, (0.24 + 0.07 * pulse) * show));
+    core.addColorStop(1, rgba(colour, 0.02 * show));
+    ctx.fillStyle = core;
+    ctx.fillRect(x0, y0, w, h);
+    ctx.globalCompositeOperation = 'source-over';
+    // milky faces: each takes the soft light according to how it is turned
+    faces.forEach(f => {
+      const apex = f.idx.find(i => i === 2 || i === 3), rest = f.idx.filter(i => i !== apex).map(i => Q[i]).sort((a, b) => a[0] - b[0]);
+      const A = Q[apex], M = [(rest[0][0] + rest[1][0]) / 2, (rest[0][1] + rest[1][1]) / 2];
+      const lit = clamp(dot(f.n, FROST_LIGHT) * 0.5 + 0.5);
+      const hi = (0.1 + lit * lit * 0.66) * show, lo = (0.04 + lit * 0.22) * show;
+      const down = ctx.createLinearGradient(A[0], A[1], M[0], M[1]);
+      down.addColorStop(0, rgba(milk, apex === 2 ? hi : lo * 0.7));
+      down.addColorStop(1, rgba(milk, apex === 2 ? lo : hi * 0.72));
+      tracePoints(f.idx.map(i => Q[i]));
+      ctx.fillStyle = down;
+      ctx.fill();
+      const across = ctx.createLinearGradient(rest[0][0], rest[0][1], rest[1][0], rest[1][1]);
+      across.addColorStop(0, rgba(COL.white, (0.03 + lit * 0.24) * show));
+      across.addColorStop(1, rgba(COL.white, 0));
+      ctx.fillStyle = across;
+      ctx.fill();
+    });
+    // the sandblasted surface
+    if (size > 13 && grainPattern()) {
+      ctx.globalAlpha = 0.3 * show;
+      ctx.fillStyle = grain;
+      ctx.fillRect(x0, y0, w, h);
+      ctx.globalAlpha = 1;
+    }
+    // light collecting along the edges of the glass, and the polished bevel just inside them
+    [[0.3, 0.05], [0.15, 0.08], [0.06, 0.14]].forEach(([width, alpha]) => {
+      tracePoints(outline);
+      ctx.strokeStyle = rgba(milk, alpha * show);
+      ctx.lineWidth = Math.max(1, size * width);
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    });
+    tracePoints(outline.map(p => [centre[0] + (p[0] - centre[0]) * 0.93, centre[1] + (p[1] - centre[1]) * 0.93]));
+    ctx.strokeStyle = rgba(COL.white, 0.15 * show);
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    // the ridges where two faces meet catch a little more light
+    const count = new Map();
+    faces.forEach(f => f.idx.forEach((a, i) => {
+      const b = f.idx[(i + 1) % 3], key = Math.min(a, b) * 10 + Math.max(a, b);
+      count.set(key, (count.get(key) || 0) + 1);
+    }));
+    const ridge = () => {
+      ctx.beginPath();
+      count.forEach((n, key) => {
+        if (n < 2) return;
+        const a = Q[Math.floor(key / 10)], b = Q[key % 10];
+        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+      });
+    };
+    ridge(); ctx.strokeStyle = rgba(milk, 0.12 * show); ctx.lineWidth = Math.max(2, size * 0.05); ctx.stroke();
+    ridge(); ctx.strokeStyle = rgba(COL.white, 0.5 * show); ctx.lineWidth = 0.9; ctx.stroke();
+    ctx.restore();
+    // a fine bright rim, strongest toward the light, as on a sheet of frosted glass
+    const rim = ctx.createLinearGradient(x0, y0, x0 + w, y0 + h);
+    rim.addColorStop(0, rgba(COL.white, 0.96 * show));
+    rim.addColorStop(0.55, rgba(milk, 0.5 * show));
+    rim.addColorStop(1, rgba(COL.white, 0.74 * show));
+    tracePoints(outline);
+    ctx.strokeStyle = rim; ctx.lineWidth = Math.min(1.7, 0.9 + size / 180); ctx.lineJoin = 'round'; ctx.stroke();
+  }
+
+  // A gate: the frosted glass diamond held inside a fine instrument ring, over a lit pedestal.
+  const GATE_RING = 2.95;
+  const gateGround = (pos, S) => pos[1] + (GROUND - pos[1]) * S;
+  function drawShield(pos, colour, deep, t, show, seed, entry, S = 1, pedestal = 1) {
     const c = toCam(pos);
     if (c[2] < NEAR || show < 0.01) return;
     const q = proj(c);
-    const pulse = 0.5 + 0.5 * Math.sin(t * 1.6 + seed);
     const dir = seed ? -1 : 1;
-    // pedestal on the ground and a light column up to the gate
-    const gp = [pos[0], GROUND, pos[2]];
-    const gq = P(gp);
-    if (gq) {
-      ctx.save();
-      ctx.translate(gq[0], gq[1]); ctx.scale(1, 0.32);
-      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 4.2 * gq[2]);
-      g.addColorStop(0, rgba(colour, 0.34 * show)); g.addColorStop(1, rgba(colour, 0));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 4.2 * gq[2], 0, TAU); ctx.fill();
-      ctx.restore();
-    }
-    [1.4, 2.4, 3.4].forEach((r, i) => polyline(flatRing(pos, r), colour, (0.7 - i * 0.18) * show, i === 0 ? 1.6 : 1, true));
-    const col = P([pos[0], GROUND, pos[2]]);
-    if (col) {
-      const g = ctx.createLinearGradient(col[0], col[1], q[0], q[1]);
-      g.addColorStop(0, rgba(colour, 0.5 * show)); g.addColorStop(1, rgba(colour, 0));
-      ctx.strokeStyle = g; ctx.lineWidth = Math.max(1, 0.1 * q[2]);
-      ctx.beginPath(); ctx.moveTo(col[0], col[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+    const yaw = Math.atan2(cam.pos[0] - pos[0], cam.pos[2] - pos[2]);
+    const px = q[2] * S;
+    const round = (r, steps = 72) => ringClosed(pos, r * S, steps, yaw, 0);
+    const onRing = (a, r) => { const x = Math.cos(a) * r * S, y = Math.sin(a) * r * S; return [pos[0] + x * Math.cos(yaw), pos[1] + y, pos[2] - x * Math.sin(yaw)]; };
+    if (pedestal > 0.01) {
+      const gy = gateGround(pos, S);
+      const gq = P([pos[0], gy, pos[2]]);
+      if (gq) {
+        ctx.save();
+        ctx.translate(gq[0], gq[1]); ctx.scale(1, 0.32);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 3.6 * gq[2] * S);
+        g.addColorStop(0, rgba(colour, 0.3 * show * pedestal)); g.addColorStop(1, rgba(colour, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 3.6 * gq[2] * S, 0, TAU); ctx.fill();
+        ctx.restore();
+        const g2 = ctx.createLinearGradient(gq[0], gq[1], q[0], q[1] + 1.4 * px);
+        g2.addColorStop(0, rgba(colour, 0.55 * show * pedestal)); g2.addColorStop(1, rgba(colour, 0.05 * show * pedestal));
+        ctx.strokeStyle = g2; ctx.lineWidth = Math.max(1, 0.05 * px);
+        ctx.beginPath(); ctx.moveTo(gq[0], gq[1]); ctx.lineTo(q[0], q[1] + 1.4 * px); ctx.stroke();
+      }
+      [1.3, 2.2, 3.1].forEach((r, i) => polyline(flatRing([pos[0], 0, pos[2]], r * S, 56, gy), colour, (0.7 - i * 0.2) * show * pedestal, i === 0 ? 1.5 : 1, true));
     }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    glow(q, 3.8 * q[2], colour, 0.26 * show);
+    glow(q, 3.2 * px, colour, 0.2 * show);
     ctx.restore();
-    // glass lens
-    const lens = ringClosed(pos, 2.2, 56, 0, 0).map(P);
-    if (lens.every(Boolean)) {
-      const g = ctx.createRadialGradient(q[0] - 0.5 * q[2], q[1] - 0.7 * q[2], 0, q[0], q[1], 2.4 * q[2]);
-      g.addColorStop(0, rgba(COL.white, 0.14 * show)); g.addColorStop(0.55, rgba(colour, 0.08 * show)); g.addColorStop(1, rgba(colour, 0.02 * show));
-      ctx.beginPath(); lens.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
-      ctx.fillStyle = g; ctx.fill();
+    // connections arriving at the entry, leaving from the exit
+    for (let i = 0; i < 2; i++) {
+      const age = (t * 0.26 + i / 2) % 1;
+      const r = entry ? 3.7 - 0.75 * age : 2.95 + 0.75 * age;
+      polyline(round(r, 64), colour, 0.32 * show * (entry ? age : 1 - age), 1, true);
     }
-    // outer ring with soft halo, thin inner rings
-    polyline(ringClosed(pos, 2.6, 80, 0, 0), colour, 0.2 * show, 5, true);
-    polyline(ringClosed(pos, 2.6, 80, 0, 0), colour, 0.95 * show, 1.6, true);
-    polyline(ringClosed(pos, 2.2, 64, 0, 0), colour, 0.35 * show, 1, true);
-    ctx.setLineDash([3, 8]); ctx.lineDashOffset = -t * 10 * dir;
-    polyline(ringClosed(pos, 1.75, 56, 0, 0), COL.ice, 0.4 * show, 1, true);
-    ctx.setLineDash([]);
-    // three rotating arc segments and four data modules
+    // the instrument ring: main band, hairline, graduated ticks, three travelling arcs, four lugs
+    polyline(round(2.6, 96), colour, 0.16 * show, 4, true);
+    polyline(round(2.6, 96), colour, 0.95 * show, 1.5, true);
+    polyline(round(2.28, 80), colour, 0.32 * show, 1, true);
+    ctx.strokeStyle = rgba(colour, 0.55 * show); ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * TAU - t * 0.06 * dir, a1 = onRing(a, 2.31), a2 = onRing(a, i % 6 === 0 ? 2.5 : 2.4);
+      const p1 = P(a1), p2 = P(a2);
+      if (p1 && p2) { ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); }
+    }
+    ctx.stroke();
     for (let i = 0; i < 3; i++) {
-      const a0 = t * 0.35 * dir + (i * TAU) / 3;
-      polyline(ringPoints(pos, 2.95, 18, 0, 0, a0, a0 + 0.9), colour, 0.9 * show, 2.6);
+      const a0 = t * 0.3 * dir + (i * TAU) / 3;
+      polyline(ringPoints(pos, GATE_RING * S, 22, yaw, 0, a0, a0 + 1.05), colour, 0.95 * show, 2.2);
     }
     for (let i = 0; i < 4; i++) {
-      const a = (i * TAU) / 4 + Math.PI / 4 - t * 0.12 * dir;
-      line([pos[0] + Math.cos(a) * 2.45, pos[1] + Math.sin(a) * 2.45, pos[2]], [pos[0] + Math.cos(a) * 3.35, pos[1] + Math.sin(a) * 3.35, pos[2]], COL.ice, 0.85 * show, 3);
+      const a = (i * TAU) / 4 + Math.PI / 4 - t * 0.1 * dir;
+      polyline(ringPoints(pos, 2.6 * S, 6, yaw, 0, a - 0.05, a + 0.05), COL.ice, 0.95 * show, 3.4);
     }
-    for (let i = 0; i < 36; i++) {
-      const a = (i / 36) * TAU - t * 0.08 * dir;
-      const r1 = i % 3 === 0 ? 2.5 : 2.42;
-      line([pos[0] + Math.cos(a) * 2.28, pos[1] + Math.sin(a) * 2.28, pos[2]], [pos[0] + Math.cos(a) * r1, pos[1] + Math.sin(a) * r1, pos[2]], colour, 0.5 * show, 1);
-    }
-    // entry takes connections in (rings shrink toward the gate); exit sends them onward (rings expand away)
-    for (let i = 0; i < 3; i++) {
-      const age = (t * 0.28 + i / 3) % 1;
-      const z = entry ? 3.6 * (1 - age) : -3.6 * age;
-      const r = entry ? 3.4 - 1.5 * age : 1.8 + 1.5 * age;
-      polyline(ringClosed([pos[0], pos[1], pos[2] + z], r, 56, 0, 0), colour, 0.35 * show * (entry ? age : 1 - age), 1, true);
-    }
-    // crystal core
-    const rot = t * 0.8 * dir + seed;
-    const V = OCT.map(v => {
-      const x = v[0] * Math.cos(rot) + v[2] * Math.sin(rot), z = -v[0] * Math.sin(rot) + v[2] * Math.cos(rot);
-      return [pos[0] + x * 0.85, pos[1] + v[1] * 1.15, pos[2] + z * 0.85];
+    // a thin orbit that really passes behind and in front of the stone
+    const orbit = (from, to) => ringPoints(pos, 2.15 * S, 44, yaw + t * 0.12 * dir + seed, 1.27, from, to);
+    const moons = [0, 1].map(k => {
+      const a = t * 0.7 * dir + k * Math.PI + seed;
+      return { a, front: Math.sin(a) > 0, q: P(ringPoints(pos, 2.15 * S, 1, yaw + t * 0.12 * dir + seed, 1.27, a, a)[0]) };
     });
-    const faces = OCT_FACES.map(f => ({ f, d: len(sub(mix(mix(V[f[0]], V[f[1]], 0.5), V[f[2]], 0.34), cam.pos)) })).sort((a, b) => b.d - a.d);
-    faces.forEach(({ f }, i) => {
-      const pts = f.map(k => P(V[k]));
-      if (pts.some(v => !v)) return;
-      ctx.beginPath(); pts.forEach((v, n) => (n ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
-      ctx.fillStyle = rgba(mix(colour, COL.white, i / 14), (0.16 + (i / 8) * 0.22) * show); ctx.fill();
-      ctx.strokeStyle = rgba(COL.white, 0.75 * show); ctx.lineWidth = 1; ctx.stroke();
-    });
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    glow(q, 1.3 * q[2] * (1.8 + pulse * 0.5), colour, 0.5 * show);
-    ctx.restore();
-    // tilted orbits with satellites
-    [[1.3, 1.15, 0.5], [1.7, 0.55, -0.35]].forEach(([r, tilt, spd], n) => {
-      polyline(ringClosed(pos, r, 56, t * spd + seed, tilt), colour, 0.4 * show, 1, true);
-      for (let k = 0; k < 2; k++) {
-        const a = t * (n ? -0.9 : 1.2) + k * Math.PI;
-        const sp = ringPoints(pos, r, 1, t * spd + seed, tilt, a, a)[0];
-        const sq = P(sp);
-        if (sq) {
-          ctx.save(); ctx.globalCompositeOperation = 'lighter';
-          glow(sq, Math.max(3, 0.2 * sq[2]), COL.ice, 0.8 * show);
-          ctx.restore();
-          ctx.fillStyle = rgba(COL.white, 0.95 * show);
-          ctx.beginPath(); ctx.arc(sq[0], sq[1], Math.max(1.4, 0.06 * sq[2]), 0, TAU); ctx.fill();
-        }
-      }
-    });
+    const moon = m => {
+      if (!m.q) return;
+      ctx.fillStyle = rgba(COL.white, 0.98 * show);
+      ctx.beginPath(); ctx.arc(m.q[0], m.q[1], clamp(0.07 * px, 1.3, 3.4), 0, TAU); ctx.fill();
+      ctx.strokeStyle = rgba(colour, 0.7 * show); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(m.q[0], m.q[1], clamp(0.17 * px, 3, 8), 0, TAU); ctx.stroke();
+    };
+    polyline(orbit(Math.PI, TAU), colour, 0.32 * show, 1);
+    moons.filter(m => !m.front).forEach(moon);
+    const bob = Math.sin(t * 0.9 + seed) * 0.05 * S;
+    drawDiamond([pos[0], pos[1] + bob, pos[2]], S, t * 0.5 * dir + seed, colour, deep, show, 0.5 + 0.5 * Math.sin(t * 1.1 + seed), entry ? 0 : 1);
+    polyline(orbit(0, Math.PI), colour, 0.42 * show, 1);
+    moons.filter(m => m.front).forEach(moon);
   }
 
   // Direction from the phone to the slide 01 camera, measured once: the phone's facing pose.
@@ -765,7 +994,7 @@
     g.fillStyle = atm; g.fillRect(0, 0, TW, TH);
     g.textBaseline = 'alphabetic';
     // status bar and dynamic island
-    g.fillStyle = INK; g.font = `600 16px ${SANS}`; g.textAlign = 'left';
+    g.fillStyle = INK; g.font = `600 16px ${APP}`; g.textAlign = 'left';
     g.fillText('9:41', 30, 38);
     g.fillStyle = '#000'; roundedPath(g, 125, 14, 110, 32, 16); g.fill();
     g.fillStyle = INK;
@@ -773,7 +1002,7 @@
     roundedPath(g, 310, 24, 26, 13, 4); g.strokeStyle = 'rgba(232,242,250,0.75)'; g.lineWidth = 1.4; g.stroke();
     g.fillRect(312.5, 26.5, 18, 8);
     // header: spaced wordmark and account avatar
-    g.fillStyle = INK; g.font = `500 18px ${SANS}`;
+    g.fillStyle = INK; g.font = `500 18px ${APP}`;
     spaced(g, 'T I Λ N', 24, 92, 2.2, 'left');
     const av = g.createLinearGradient(310, 70, 342, 102);
     av.addColorStop(0, '#3a6fb5'); av.addColorStop(1, '#16335c');
@@ -782,37 +1011,37 @@
     g.beginPath(); g.ellipse(326, 95, 8, 5.5, 0, Math.PI, TAU); g.fill();
     // status row: label on the left, address on the right
     g.fillStyle = GREEN; g.beginPath(); g.arc(28, 124, 2.6, 0, TAU); g.fill();
-    g.fillStyle = MUTED; g.font = `600 9px ${SANS}`;
+    g.fillStyle = MUTED; g.font = `600 9px ${APP}`;
     spaced(g, 'PROTECTED', 38, 127.5, 2, 'left');
-    g.font = `500 7px ${SANS}`; spaced(g, 'EXIT IP', TW - 24, 118, 1.2, 'right');
+    g.font = `500 7px ${APP}`; spaced(g, 'EXIT IP', TW - 24, 118, 1.2, 'right');
     g.fillStyle = GREEN; g.beginPath(); g.arc(TW - 98, 130, 2.6, 0, TAU); g.fill();
     g.fillStyle = INK; g.font = `400 10px ${MONO}`; g.textAlign = 'right'; g.fillText('203.0.113.24', TW - 24, 133.5);
     // globe
     drawGlobe(g, TW / 2, 262, 104, t);
     // connected for
     icon(g, 'clock', 112, 389, 5.2, CYAN, 1.2);
-    g.fillStyle = MUTED; g.font = `400 11px ${SANS}`; g.textAlign = 'left'; g.fillText('Connected for', 124, 393);
+    g.fillStyle = MUTED; g.font = `400 11px ${APP}`; g.textAlign = 'left'; g.fillText('Connected for', 124, 393);
     g.fillStyle = INK; g.font = `500 12.5px ${MONO}`; g.fillText('00:12:41', 204, 393.5);
     // headline and subtitle
-    g.fillStyle = INK; g.font = `500 22px ${SANS}`; g.textAlign = 'center';
+    g.fillStyle = INK; g.font = `500 22px ${APP}`; g.textAlign = 'center';
     g.fillText('Encrypted and Hidden.', TW / 2, 432);
-    g.fillStyle = MUTED; g.font = `400 12px ${SANS}`;
+    g.fillStyle = MUTED; g.font = `400 12px ${APP}`;
     g.fillText('Your encrypted connection through', TW / 2, 454);
     g.fillText('both relays is verified.', TW / 2, 470);
     // route labels
-    g.font = `400 9.5px ${SANS}`;
+    g.font = `400 9.5px ${APP}`;
     g.fillStyle = GREEN; g.beginPath(); g.arc(52, 503, 2.4, 0, TAU); g.fill(); g.beginPath(); g.arc(TW - 118, 503, 2.4, 0, TAU); g.fill();
     g.fillStyle = MUTED; g.textAlign = 'left'; g.fillText('Identity Shield', 60, 506.5); g.fillText('Destination Shield', TW - 110, 506.5);
     g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(144, 503.5); g.lineTo(TW - 130, 503.5); g.stroke();
     // destination card
     glass(g, 22, 522, TW - 44, 56, 17, false);
     icon(g, 'globe', 48, 550, 10, CYAN, 1.1);
-    g.fillStyle = INK; g.font = `500 13.5px ${SANS}`; g.textAlign = 'left'; g.fillText('United States', 70, 546);
-    g.fillStyle = MUTED; g.font = `400 10px ${SANS}`; g.fillText('New York · Two relays', 70, 562);
+    g.fillStyle = INK; g.font = `500 13.5px ${APP}`; g.textAlign = 'left'; g.fillText('United States', 70, 546);
+    g.fillStyle = MUTED; g.font = `400 10px ${APP}`; g.fillText('New York · Two relays', 70, 562);
     icon(g, 'chevron', TW - 44, 551, 5, MUTED, 1.4);
     // action
     glass(g, 22, 592, TW - 44, 50, 17, false);
-    g.fillStyle = INK; g.font = `600 14.5px ${SANS}`; g.textAlign = 'center'; g.fillText('Disconnect', TW / 2, 622);
+    g.fillStyle = INK; g.font = `600 14.5px ${APP}`; g.textAlign = 'center'; g.fillText('Disconnect', TW / 2, 622);
     icon(g, 'power', TW - 50, 617, 6.5, INK, 1.5);
     // native tab bar
     glass(g, 18, 664, TW - 36, 64, 32, false);
@@ -822,7 +1051,7 @@
     names.forEach((name, i) => {
       const x = 18 + tw * i + tw / 2, on = i === 0;
       icon(g, kinds[i], x, 689, 8, on ? CYAN : MUTED, 1.4);
-      g.fillStyle = on ? CYAN : MUTED; g.font = `500 8.5px ${SANS}`; g.textAlign = 'center'; g.fillText(name, x, 712);
+      g.fillStyle = on ? CYAN : MUTED; g.font = `500 8.5px ${APP}`; g.textAlign = 'center'; g.fillText(name, x, 712);
     });
     roundedPath(g, 130, 756, 100, 5, 2.5); g.fillStyle = 'rgba(232,242,250,0.7)'; g.fill();
   }
@@ -950,10 +1179,13 @@
         if (s < 0) continue;
         const q = P(pathAt(s));
         if (!q) continue;
-        const colour = pathColour(s);
-        const a = (1 - j / 6) * 0.95;
-        const r = clamp((j === 0 ? 0.085 : 0.06) * q[2], j === 0 ? 1.4 : 1, 5);
-        if (j === 0) glow(q, r * 3.2, colour, 0.3);
+        const colour = pathColour(s), leg = legAt(s);
+        if (leg <= 0.01) continue;
+        const mask = textMask(q[0]);
+        if (mask <= 0.01) continue;
+        const a = (1 - j / 6) * 0.95 * leg * mask;
+        const r = clamp((j === 0 ? 0.085 : 0.06) * q[2], j === 0 ? 1.4 : 1, narrow ? 2.6 : 5);
+        if (j === 0) glow(q, r * 3.2, colour, 0.3 * leg * mask);
         ctx.fillStyle = rgba(colour, a);
         ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, TAU); ctx.fill();
       }
@@ -961,7 +1193,7 @@
     ctx.restore();
   }
   function drawInternet(p, t) {
-    const amt = smooth(clamp((p - 0.7) / 0.14));
+    const amt = smooth(clamp((p - 0.79) / 0.09));
     if (amt <= 0.01) return;
     const near = pt => clamp(1 - len(sub(pt, cam.pos)) / 78);
     // links, batched by brightness so each batch is one stroke
@@ -970,7 +1202,8 @@
       const a = net[e.a].p, b = net[e.b].p;
       const pa = P(a), pb = P(b), pc = P(e.ctrl);
       if (!pa || !pb || !pc) return;
-      const k = near(mix(a, b, 0.5));
+      const k = near(mix(a, b, 0.5)) * Math.min(textMask(pa[0]), textMask(pb[0]));
+      if (k <= 0.004) return;
       buckets[Math.min(3, Math.floor(k * 4))].push([pa, pc, pb]);
     });
     ctx.lineWidth = 1;
@@ -985,16 +1218,18 @@
     net.forEach((n, i) => {
       const q = P(n.p);
       if (!q) return;
+      const mask = textMask(q[0]);
+      if (mask <= 0.01) return;
       const k = near(n.p), a = act[i];
       const r = clamp((0.055 + a * 0.05) * q[2], 0.9, 2.8);
-      ctx.fillStyle = rgba(a > 0.25 ? COL.white : n.colour, clamp(0.5 + 0.4 * k + a * 0.5, 0, 1) * amt);
+      ctx.fillStyle = rgba(a > 0.25 ? COL.white : n.colour, clamp(0.5 + 0.4 * k + a * 0.5, 0, 1) * amt * mask);
       ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, TAU); ctx.fill();
       const age = ringAge[i];
       for (let e = 0; e < 2; e++) {   // a ring and a fainter echo behind it
         const ea = age - e * 0.16;
         if (ea < 0 || ea >= 0.8) continue;
         const f = ea / 0.8;
-        ctx.strokeStyle = rgba(n.colour, (1 - f) * (1 - f) * (e ? 0.5 : 0.95) * amt * (0.5 + k));
+        ctx.strokeStyle = rgba(n.colour, (1 - f) * (1 - f) * (e ? 0.5 : 0.95) * amt * (0.5 + k) * mask);
         ctx.lineWidth = e ? 0.9 : 1.2;
         ctx.beginPath(); ctx.arc(q[0], q[1], clamp((0.1 + f * 0.75) * q[2], 2.5, 26), 0, TAU); ctx.stroke();
       }
@@ -1004,7 +1239,7 @@
       const e = edges[s.e], col = net[s.fwd ? e.b : e.a].colour;
       const at = d => { const u = s.fwd ? s.u - d : 1 - s.u + d; return u < 0 || u > 1 ? null : P(edgeAt(e, u)); };
       let prev = at(0);
-      if (!prev) return;
+      if (!prev || textMask(prev[0]) < 0.3) return;
       for (let j = 1; j <= 5; j++) {
         const q = at(j * 0.04);
         if (!q) break;
@@ -1013,17 +1248,19 @@
         prev = q;
       }
       const h = at(0);
+      if (textMask(h[0]) < 0.3) return;
       ctx.fillStyle = rgba(COL.white, amt);
       ctx.beginPath(); ctx.arc(h[0], h[1], clamp(0.09 * h[2], 1.2, 2.8), 0, TAU); ctx.fill();
     });
     // the Destination Shield feeding the network
+    const tip = [EXIT[0], EXIT[1] - 1.3 * exitScale, EXIT[2]];
     targets.forEach((idx, k) => {
       const end = net[idx].p;
-      const ctrl = [lerp(EXIT_POINT[0], end[0], 0.35), EXIT_POINT[1] - 3, lerp(EXIT_POINT[2], end[2], 0.4)];
+      const ctrl = [lerp(tip[0], end[0], 0.35), tip[1] - 3, lerp(tip[2], end[2], 0.4)];
       const pts = [];
       for (let s = 0; s <= 16; s++) {
         const u = s / 16, a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, c = u * u;
-        pts.push([a * EXIT_POINT[0] + b * ctrl[0] + c * end[0], a * EXIT_POINT[1] + b * ctrl[1] + c * end[1], a * EXIT_POINT[2] + b * ctrl[2] + c * end[2]]);
+        pts.push([a * tip[0] + b * ctrl[0] + c * end[0], a * tip[1] + b * ctrl[1] + c * end[1], a * tip[2] + b * ctrl[2] + c * end[2]]);
       }
       polyline(pts, COL.mint, 0.3 * amt, 1);
       const f = (t * 0.28 + k / targets.length) % 1;
@@ -1045,7 +1282,7 @@
     hubs.forEach((idx, k) => {
       const q = P(net[idx].p);
       if (!q) return;
-      ctx.font = `700 ${clamp(q[2] * 0.7, 9, 12)}px ${MONO}`;
+      ctx.font = `650 ${clamp(q[2] * 0.7, 10, 12)}px ${SANS}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
       ctx.fillStyle = rgba(COL.mint, 0.9 * amt);
       ctx.fillText(siteLabels[k], q[0], q[1] - Math.max(9, 0.5 * q[2]));
@@ -1053,23 +1290,36 @@
   }
 
   // ---- frame ----------------------------------------------------------------------------
+  let exitScale = 1;
   function draw(p, t) {
+    frameCount++;
     ctx.clearRect(0, 0, W, H);
     const w = pose(p);
+    updateLegs(p);
+    maskRect = free[chapterOf(p)] || null;
+    const sizeFor = (node, weights) => {
+      const q = P(node);
+      if (!q) return 1;
+      return weights.reduce((S, [weight, ring]) => lerp(S, ring / (GATE_RING * q[2]), weight), 1);
+    };
+    const fr3 = free[3] || { x0: 0, x1: W, y0: 0, y1: H };
+    const twoRing = twoRingPx(fr3);
+    const entryScale = sizeFor(ENTRY, [[w[3], twoRing]]);
+    exitScale = sizeFor(EXIT, [[w[3], twoRing], [w[5], netRingPx()]]);
     backdrop(p);
     drawStars();
     drawGrid(p);
     drawInternet(p, t);
-    drawFans(p, t);
     drawPathLine();
-    const showEntry = smooth(clamp((p - 0.24) / 0.1));
-    const showExit = smooth(clamp((p - 0.28) / 0.2));
+    const showEntry = smooth(clamp((p - 0.24) / 0.1)) * (1 - smooth(clamp((p - 0.8) / 0.06)));
+    const showExit = smooth(clamp((p - 0.45) / 0.08));
+    const ground = narrow ? w[3] : 1;
     drawPulses(t, 1 - smooth(clamp((p - 0.14) / 0.1)));
     drawPackets(t);
     [
-      { d: len(sub(EXIT, cam.pos)), run: () => drawShield(EXIT, COL.mint, t, showExit, 2, false) },
-      { d: len(sub(ENTRY, cam.pos)), run: () => drawShield(ENTRY, COL.blue, t, showEntry, 0, true) },
-      { d: len(sub(DEVICE, cam.pos)), run: () => drawDevice(t, 1, p) }
+      { d: len(sub(EXIT, cam.pos)), run: () => drawShield(EXIT, COL.mint, COL.deepMint, t, showExit, 2, false, exitScale, ground) },
+      { d: len(sub(ENTRY, cam.pos)), run: () => drawShield(ENTRY, COL.blue, COL.deepBlue, t, showEntry, 0, true, entryScale, ground) },
+      { d: len(sub(DEVICE, cam.pos)), run: () => drawDevice(t, 1 - smooth(clamp((p - 0.3) / 0.08)), p) }
     ].sort((a, b) => b.d - a.d).forEach(i => i.run());
 
     // information cards, placed in the free area and anchored to each shield
@@ -1078,57 +1328,104 @@
     const eq = P(ENTRY), xq = P(EXIT);
     const cards = [];
     if (eq && eAlpha > 0.02 && free[3]) {
-      cards.push({ key: 'e', ax: eq[0], ay: eq[1] - 3.15 * eq[2], title: 'ENTRY SHIELD', colour: COL.blue, alpha: eAlpha,
+      cards.push({ key: 'e', ax: eq[0], ay: eq[1] - 3.1 * eq[2] * entryScale, title: 'ENTRY SHIELD', colour: COL.blue, alpha: eAlpha,
         lines: [{ text: 'Sees your IP' }, { text: 'Not where you go', dim: true }] });
     }
     if (xq && xAlpha > 0.02 && free[3]) {
-      cards.push({ key: 'x', ax: xq[0], ay: xq[1] - 3.15 * xq[2], title: 'EXIT SHIELD', colour: COL.mint, alpha: xAlpha,
+      cards.push({ key: 'x', ax: xq[0], ay: xq[1] - 3.1 * xq[2] * exitScale, title: 'EXIT SHIELD', colour: COL.mint, alpha: xAlpha,
         lines: [{ text: 'Sees where you go' }, { text: 'Not your IP', dim: true }] });
     }
     if (cards.length) {
       const fr = p < 0.47 ? free[2] : p < 0.65 ? free[3] : free[4];
-      layoutCards(cards, fr || free[3]);
-      cards.forEach(c => drawCard(c, c.alpha));
+      if (narrow) {
+        cards.forEach(c => drawChip(c, c.alpha * (1 - w[3]), fr || fr3));
+        layoutCards(cards, fr3);
+        cards.forEach(c => drawCard(c, c.alpha * w[3]));
+      } else {
+        layoutCards(cards, fr || fr3);
+        cards.forEach(c => drawCard(c, c.alpha));
+      }
       if (w[3] > 0.05 && eq && xq) {
-        const foot = pos => { let best = null; for (let i = 0; i < 24; i++) { const a = (i / 24) * TAU; const q = P([pos[0] + Math.cos(a) * 3.4, GROUND, pos[2] + Math.sin(a) * 3.4]); if (q && (!best || q[1] > best[1])) best = q; } return best; };
-        const ge = P([ENTRY[0], GROUND, ENTRY[2]]), gx = P([EXIT[0], GROUND, EXIT[2]]), fe = foot(ENTRY), fx = foot(EXIT);
+        const foot = (pos, S) => {
+          const gy = gateGround(pos, S);
+          let best = null;
+          for (let i = 0; i < 24; i++) {
+            const a = (i / 24) * TAU, q = P([pos[0] + Math.cos(a) * 3.1 * S, gy, pos[2] + Math.sin(a) * 3.1 * S]);
+            if (q && (!best || q[1] > best[1])) best = q;
+          }
+          return best;
+        };
+        const ge = P([ENTRY[0], gateGround(ENTRY, entryScale), ENTRY[2]]), gx = P([EXIT[0], gateGround(EXIT, exitScale), EXIT[2]]);
+        const fe = foot(ENTRY, entryScale), fx = foot(EXIT, exitScale);
         if (ge && gx && fe && fx) {
-          const yLine = Math.min(Math.max(fe[1], fx[1]) + 26, (free[3] ? free[3].y1 : H) - 4);
-          drawBracket({ x: ge[0], y: fe[1] }, { x: gx[0], y: fx[1] }, yLine, w[3]);
+          const yLine = Math.min(Math.max(fe[1], fx[1]) + (narrow ? 20 : 26), fr3.y1 - 14);
+          drawBracket({ x: ge[0], y: Math.min(fe[1], yLine - 12) }, { x: gx[0], y: Math.min(fx[1], yLine - 12) }, yLine, w[3]);
         }
       }
     }
-    const dq = P([DEVICE[0], DEVICE[1] - 2.15, DEVICE[2]]);
-    if (dq) {
+    if (!narrow) {
       const a = 1 - smooth(clamp((p - 0.08) / 0.1));
       if (a > 0.02) label('YOUR DEVICE', [DEVICE[0], DEVICE[1] - 2.0, DEVICE[2]], COL.ice, 0.9 * a);
     }
   }
 
   // ---- layout, scroll and loop ------------------------------------------------------
+  const probe = height => {
+    const el = document.createElement('i');
+    el.setAttribute('aria-hidden', 'true');
+    el.style.cssText = 'position:absolute;left:0;top:0;width:0;visibility:hidden;pointer-events:none;height:' + height;
+    root.appendChild(el);
+    return el;
+  };
+  const barFull = probe('var(--bar-full,0px)'), barShift = probe('var(--bar-shift,0px)');
+  let barTarget = 0, barNow = 0;
   function measure() {
     const bar = header ? header.querySelector('.header-inner') : null;
     document.documentElement.style.setProperty('--header-h', ((bar ? bar.offsetHeight : 96) + 1) + 'px');
     const rect = stage.getBoundingClientRect();
     W = Math.max(1, Math.round(rect.width));
     H = Math.max(1, Math.round(rect.height));
-    dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
+    dpr = Math.min(W <= 640 ? 2.6 : 2, window.devicePixelRatio || 1);
+    const cw = Math.round(W * dpr), ch = Math.round(H * dpr);
+    if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    narrow = W < 700;
-    cam.focal = Math.min(W, H * 1.15) * 0.95;
+    narrow = W <= 640;
+    // The toolbar's share of the stage is not usable room while it is showing.
+    const usable = H - barFull.offsetHeight;
+    root.classList.toggle('story-compact', narrow && usable < 650);
+    root.classList.toggle('story-tight', narrow && usable < 530);
+    cam.focal = narrow ? Math.max(W, H) * 0.9 : Math.min(W, H * 1.15) * 0.95;   // phones get a longer lens: straighter, calmer
     // The part of the stage each chapter's text leaves free for the scene.
     chapters.forEach((el, i) => {
       const l = el.offsetLeft, tp = el.offsetTop, w = el.offsetWidth;
       let r;
-      if (narrow) r = { x0: 12, x1: W - 40, y0: 12, y1: Math.max(120, tp - 14) };
-      else if (l + w / 2 < W / 2) r = { x0: l + w + 36, x1: W - 80, y0: 24, y1: H - 64 };
-      else r = { x0: 28, x1: l - 36, y0: 24, y1: H - 64 };
+      if (narrow) r = { x0: 14, x1: W - 14, y0: 14, y1: Math.max(150, tp - 10), base: Math.max(150, tp - 10) };
+      else if (l + w / 2 < W / 2) r = { x0: l + w + 36, x1: W - 80, y0: 24, y1: H - 64, textLeft: true };
+      else r = { x0: 28, x1: l - 36, y0: 24, y1: H - 64, textLeft: false };
       if (r.x1 - r.x0 < 160) { r.x0 = Math.min(r.x0, W * 0.35); r.x1 = Math.max(r.x1, r.x0 + 160); }
       free[i] = r;
     });
+    barTarget = barShift.offsetHeight;
+    applyBar();
+    pickHubs();
+    if (activeChapter >= 0) markTextTop(activeChapter);
   }
+  // When the phone browser's toolbar shrinks, the words glide down (story.css) and the scene eases into the room.
+  function applyBar() { free.forEach(r => { if (r.base) r.y1 = r.base + barNow; }); }
+  // The three named places in the network are chosen where this screen has room for their labels.
+  function pickHubs() {
+    const fr = free[5];
+    if (!fr) return;
+    pose(CENTERS[5]);
+    const room = narrow ? 92 : 170, picks = [];
+    net.map((n, i) => i).sort((a, b) => net[b].deg - net[a].deg).forEach(i => {
+      const q = picks.length < 3 ? P(net[i].p) : null;
+      if (!q || q[0] < fr.x0 + 42 || q[0] > fr.x1 - 42 || q[1] < fr.y0 + netRingPx() * 2.4 || q[1] > fr.y1 - 14) return;
+      if (picks.every(h => Math.hypot(h.q[0] - q[0], h.q[1] - q[1]) > room)) picks.push({ i, q });
+    });
+    if (picks.length) { hubs.length = 0; picks.forEach(h => hubs.push(h.i)); }
+  }
+  function markTextTop(idx) { if (free[idx]) root.style.setProperty('--text-top', free[idx].y1 + 'px'); }
   function readProgress() {
     const rect = root.getBoundingClientRect();
     const barH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 97;
@@ -1149,6 +1446,7 @@
       root.dataset.chapter = String(idx);
       chapters.forEach((el, n) => el.classList.toggle('is-active', n === idx));
       dots.forEach((el, n) => { if (n === idx) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current'); });
+      markTextTop(idx);
     }
     root.style.setProperty('--story-progress', p.toFixed(4));
   }
@@ -1207,6 +1505,10 @@
     const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
     last = now;
     if (!isPaused()) { time += dt; stepNet(dt); }
+    if (barNow !== barTarget) {
+      barNow = Math.abs(barTarget - barNow) < 0.4 ? barTarget : lerp(barNow, barTarget, 1 - Math.exp(-dt * 6));
+      applyBar();
+    }
     const target = readProgress();
     const damped = smoothDamp(cur, target, 0.06, dt);
     // Never sweep faster than about a chapter every fifth of a second, even if the scroll bar is dragged.
@@ -1214,7 +1516,7 @@
     if (Math.abs(target - cur) < 0.00006 && Math.abs(vel.v) < 0.0005) { cur = target; vel.v = 0; }
     draw(cur, time);
     updateUi(cur);
-    const moving = cur !== target;
+    const moving = cur !== target || barNow !== barTarget;
     if (onScreen && !document.hidden && (!isPaused() || moving)) raf = requestAnimationFrame(frame);
   }
   function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
