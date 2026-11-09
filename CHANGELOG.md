@@ -4,6 +4,14 @@ Changes to the public website at https://tianvpn.com/ (this repository only). Th
 
 Newest first. Dates are commit dates. An entry records what changed in source, not a guarantee of how the live site looks today.
 
+## 2026-11-09 - DNS filter list credits in the Terms (branch `dns-list-credits`)
+
+Added at the owner's request.
+
+- Terms, section 11 (Open-Source & Third-Party Notices): ten new entries credit the lists TIAN's DNS filtering is assembled from. AdAway (CC BY 3.0) and Tiuxo (CC BY 4.0) carry their attribution and what TIAN changes; Steven Black, AdGuard CNAME Trackers, Anudeep, FadeMind, Badd Boyz Hosts and hostsVN are MIT; ShadowWhisperer is public domain; HaGeZi's Apple list (GPL-3.0) is named as used on servers only.
+- The MIT License text already on the page now lists those six copyright holders next to Rive and Jakub Antalik.
+- Nothing else on the page changed, including the Effective Date.
+
 ## 2026-11-08 - Frosted glass diamonds, phone layout and reading type (branch `story-phone-diamond`)
 
 Published with the owner's approval after a preview.
