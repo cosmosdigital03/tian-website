@@ -4,6 +4,34 @@ Changes to the public website at https://tianvpn.com/ (this repository only). Th
 
 Newest first. Dates are commit dates. An entry records what changed in source, not a guarantee of how the live site looks today.
 
+## 2026-11-10 - Motion and type layer on the restored homepage (branch `restore-before-story`)
+
+Built from a draft the owner approved on Superdesign. Published on 2026-11-10 at the owner's instruction after a preview.
+
+- New files `motion.css` and `motion.js`, linked from `index.html` after `premium.css` and after the existing scripts. `premium.css`, `app.js` and every word and picture on the page are unchanged. With the two files unlinked the page is the restored homepage again.
+- New file `fonts.css`, shared by all five pages (homepage, Support, Privacy, Terms and the error page). It declares the two font files and the two stacks once. Support and the error page pick them up through `styles.css`, Privacy and Terms through a short block at the end of their own styles. Headings there are now medium weight like the homepage, and reading text is the serif at 15 to 16.5px. The reproduced licence text in the Terms stays monospaced. No wording on any page changed.
+- Type: headlines and interface text name Styrene first, reading text names Tiempos first (the owner's choice). Both are licensed and are not shipped. Their stand-ins are served from this site: `assets/fonts/dm-sans-latin.woff2` (DM Sans, variable weight and optical size, 62,724 bytes, SHA-256 `ca72d2bcea8f4daa783dbdfa2d9b46068c3ce38168e05918fb867aa453b4f890`) and `assets/fonts/source-serif-4-latin.woff2` (Source Serif 4, variable weight, 50,936 bytes, SHA-256 `382475f38242c52d42a3e5ff8dc69b5d73f10d0d21e4550b5fe232984688779a`). They are the Latin subsets from Fontsource, fetched through jsDelivr with the owner's approval; the SIL Open Font License texts from the Google Fonts repository are in `licenses/`. No font service is contacted. Reading text is larger, 14.5 to 17.5px.
+- Hero: the two picture cards no longer slide down over the sentence above them. They stay in their wells. One point of light travels You, Identity, Destination, Web on a 10 second loop, and the two views light up in turn, never together. "You" and "Web" are the only words the layer adds to the page.
+- Header: a reading-progress line, and a marker under the link of the section in view.
+- How it works: the two shield tabs advance by themselves every 6 seconds while in view, with a progress line on the active tab, and stop for good on a click or key press. The matching shield card is highlighted and the panel text cross-fades.
+- Live footprint: a value shimmers only while the page itself reports "Checking…" and settles when the real value arrives. The script reads those values and never writes them.
+- Details: headings rise line by line, sections reveal once with a short stagger, platform and promise icons draw themselves, cards answer the pointer, questions open and close smoothly, the comparison table gets three small route drawings above its column titles and a highlighted TIAN column, and the phone menu fades in.
+- Safety rails: every animation and every hidden-until-revealed state requires `motion-enabled`, so the Pause motion button and the reduced-motion preference show the finished page. No scroll takeover, nothing stored, no request to another host.
+- Tests: 111 of 111 pass (`node --test tests/*.test.cjs`). 15 are new: 10 in `tests/motion.test.cjs` and 5 in `tests/fonts.test.cjs`. Three test titles in `information-story.test.cjs` now say that they describe the base stylesheet.
+- Reviewed in a browser on 2026-11-09 at 1090x909 and 375x812, all five pages: both fonts load from this site, the only outside request is the homepage's existing IPWHOIS lookup, no console errors, no sideways scrolling. The working copy was then lost in a restart and rebuilt on 2026-11-10 from the same commits, the saved draft and the same font files (identical hashes); the rebuilt copy passed the tests and a text comparison but was not reviewed in a browser again before publishing.
+- Known gaps: not seen on a real phone, and the motion has not been watched end to end at full speed. Tiempos and Styrene need web licences before they can be shipped. On phones a row of "=" signs in the Terms licence text runs past the edge of its box; that was already so before this change.
+
+## 2026-11-10 - Back to the site from before the Story (branch `restore-before-story`)
+
+Asked for by the owner, who confirmed it after a preview. Published together with the entry above.
+
+- The homepage, its stylesheet, the Support, error and Privacy pages, the README and the tests are back to how they were at commit `7538a05` (2026-11-08), the last one before the cinematic scroll story.
+- Removed with the story: `story.js`, `story.css`, `topics.js`, the separate pages `how-it-works.html`, `footprint.html`, `platforms.html` and `compare.html`, and the self-hosted Inter font with its licence and build script. The menu jumps to sections of the homepage again.
+- Kept: the DNS filter list credits in the Terms (next entry). `terms.html` is the `7538a05` page plus those credits.
+- One fix on top, on Support and the error page: the logo no longer sits over the name. `styles.css` gives the phone header a 34px logo and gives the footer logo room beside the name.
+- The Android glass diamond tried on the story on 2026-11-09 was rejected by the owner and never committed.
+- Known gap: outside links to the four removed pages will land on the error page.
+
 ## 2026-11-09 - DNS filter list credits in the Terms (branch `dns-list-credits`)
 
 Added at the owner's request.

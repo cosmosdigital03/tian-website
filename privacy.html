@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Privacy Policy — TIAN</title><link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <title>Privacy Policy — TIAN</title>
   <meta name="description" content="Privacy Policy for TIAN Private Network. Zero browsing-history logs, separated multi-path relay architecture, and transparent operational practices.">
   <meta name="theme-color" content="#07101E">
+  <link rel="preload" href="assets/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/source-serif-4-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="fonts.css?v=20261110-1">
   <style>
-    @font-face { font-family: "TIAN Text"; src: url("assets/fonts/inter-latin.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
     :root {
       --bg-primary: #060d19;
       --bg-card: #0c192c;
@@ -33,7 +35,7 @@
       scroll-behavior: smooth;
       background-color: var(--bg-primary);
       color: var(--text-primary);
-      font-family: "TIAN Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
       line-height: 1.7;
     }
@@ -262,6 +264,33 @@
       section {
         padding: 24px 20px;
       }
+    }
+
+    /* Type: the shared TIAN fonts from fonts.css. Styrene for headings and interface, Tiempos for reading. */
+    :root {
+      --display: var(--tian-display, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", sans-serif);
+      --serif: var(--tian-serif, Georgia, "Times New Roman", serif);
+    }
+    html {
+      font-family: var(--display);
+    }
+    h1, section h2 {
+      font-weight: 500;
+    }
+    h1 {
+      letter-spacing: -0.03em;
+    }
+    section h2 {
+      letter-spacing: -0.02em;
+    }
+    section p, section ul, .summary-card p, .legal-caps {
+      font-family: var(--serif);
+    }
+    section p, section ul {
+      font-size: 1.03rem;
+    }
+    .summary-card p {
+      font-size: 0.92rem;
     }
   </style>
 </head>

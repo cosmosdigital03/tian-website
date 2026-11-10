@@ -43,3 +43,14 @@ body:not(.js-enabled) .scenario-layout{display:block}
 .support-card p:last-child{margin-bottom:0}
 @media(min-width:1151px){.header-inner{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}.header-inner>.brand{justify-self:start}.main-nav{margin:0}.launch-status{justify-self:end}.footer-inner{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}.footer nav{justify-content:center;margin:0}.footer .copyright{justify-self:end}}
 @media(max-width:760px){.support-grid{grid-template-columns:1fr}.main-nav{background:none;border:0;padding:0}}
+.footer .brand-mark{width:40px}
+@media(max-width:560px){.header .brand-mark,.header .brand-logo{width:34px;height:34px}}
+/* Type: the shared TIAN fonts from fonts.css. Styrene for headings and interface, Tiempos for reading. */
+:root{font-family:var(--tian-display,"Avenir Next","Segoe UI",Arial,sans-serif)}
+.prose h1,.support-card h2{font-family:inherit;font-weight:500;letter-spacing:-.03em}
+.support-card h2{letter-spacing:-.022em}
+.button{font-weight:600}
+.prose .intro,.prose p:not(.eyebrow),.support-card p,.footer p:not(.copyright){font-family:var(--tian-serif,Georgia,"Times New Roman",serif)}
+.prose p:not(.eyebrow):not(.intro),.support-card p{font-size:15px;line-height:1.75}
+.footer p:not(.copyright){font-size:12px}
+@media(max-width:560px){.prose p:not(.eyebrow):not(.intro),.support-card p{font-size:14.5px}}

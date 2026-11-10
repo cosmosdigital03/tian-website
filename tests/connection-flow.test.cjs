@@ -32,7 +32,7 @@ const privacyValueIds = ['detail-privacy-label', 'detail-privacy-summary', 'deta
 // It performs no external requests and does not substitute for visual browser QA.
 function page(options = {}) {
   const elements = new Map();
-  const html = fs.readFileSync(path.join(root, 'footprint.html'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const plainText = value => value.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
   for (const match of html.matchAll(/<([a-z][\w-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)) {

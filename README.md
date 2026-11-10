@@ -10,15 +10,11 @@ No build step or third-party JavaScript dependencies are required. Serve the rep
 python3 -m http.server 8000
 ```
 
-## Pages
+The homepage uses `premium.css` and `app.js`, with `motion.css` and `motion.js` layered on top for type and motion. Support and the error page use the shared `styles.css` stylesheet; Privacy and Terms carry their own styles. Every page links `fonts.css` first. The header and footer use the supplied TIAN emblem. The Solving orb adapts Thinking Orbs under the MIT license; see `licenses/thinking-orbs-MIT.txt`.
 
-- `index.html` is a scroll-driven story (device, Entry shield, two information views, Exit shield, open internet) drawn by `story.js` on a canvas with `story.css`. It is dependency-free, makes no network requests and stores nothing. With reduced motion, no JavaScript or no canvas, the same six chapters appear as stacked readable sections (`body.story-static`). The illustration shows what each shield can see, not a packet-by-packet path.
-- `how-it-works.html`, `footprint.html` (the automatic connection snapshot and its `connection-*.js` modules), `platforms.html` and `compare.html` (comparison plus FAQ) each open as their own page and use `premium.css` and `app.js`.
-- Support, privacy, terms and error pages retain the shared `styles.css` stylesheet and link to the pages above.
+Fonts on every page come from `fonts.css`: headlines and interface text name Styrene first, reading text names Tiempos first. Both are licensed fonts and are not shipped here, so visitors without them see the stand-ins DM Sans and Source Serif 4, which are served from this site (`assets/fonts/`, SIL Open Font License texts in `licenses/DMSans-OFL.txt` and `licenses/SourceSerif4-OFL.txt`). No font service is contacted. Do not add Styrene or Tiempos files without web licences. Each page keeps a system font stack underneath as the fallback.
 
-The homepage uses `premium.css`, `story.css`, `app.js` and `story.js`. Support and error pages use `premium.css` as well; privacy and terms carry their own styles. Information text is self-hosted Inter (`assets/fonts/inter-latin.woff2`, rebuilt with `scripts/build-web-font.cjs`). The header and footer use the supplied TIAN emblem. The Solving orb adapts Thinking Orbs under the MIT license; see `licenses/thinking-orbs-MIT.txt`. Fonts are supplied by the visitor's system. Headings use a retro-inspired system serif stack, with sans-serif body and interface text.
-
-The divided-picture animation shows distinct relay information views, not separate packet paths or payload reassembly. Both views remain inside one shared-service frame. Pause motion and reduced-motion preferences retain a clear static explanation.
+The motion layer is an enhancement. Every loop and entrance runs only while `app.js` has set `motion-enabled`, so the Pause motion button and the reduced-motion preference show the finished page; with scripts off the page is complete and still. It never takes over scrolling. In the hero the two picture cards stay inside one shared-service frame; one point of light stands for the single connection passing the Identity view and then the Destination view, and the two views light up in turn, never together. It does not show separate packet paths or payload reassembly. The live footprint values shimmer only while the page itself reports "Checking…".
 
 ## Tests
 
@@ -28,7 +24,7 @@ Run the complete dependency-free Node test suite (verified with Node 24):
 node --test tests/*.test.cjs
 ```
 
-The tests cover device/network classification, privacy recognition, automatic connection-check lifecycle and stale-response handling, UI keyboard interactions, reduced-motion preferences, mobile navigation, and local reference integrity. VM/static tests supplement rather than replace responsive browser review.
+The tests cover device/network classification, privacy recognition, automatic connection-check lifecycle and stale-response handling, UI keyboard interactions, reduced-motion preferences, mobile navigation, local reference integrity, the motion layer's contract (opt-in motion, no outside requests, no scroll takeover), and the shared fonts (served from this site on every page, with their licences). VM/static tests supplement rather than replace responsive browser review.
 
 ## Connection snapshot
 
