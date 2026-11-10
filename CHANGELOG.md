@@ -4,6 +4,15 @@ Changes to the public website at https://tianvpn.com/ (this repository only). Th
 
 Newest first. Dates are commit dates. An entry records what changed in source, not a guarantee of how the live site looks today.
 
+## 2026-11-10 - Lighter pictures
+
+The owner reported slow picture loading on computer and phone.
+
+- The five homepage illustrations were 1.8 to 2.1 MB PNG files each (about 9.5 MB together). They are now WebP at 840px wide, 35 to 68 KB each (about 217 KB together), re-encoded from the same artwork in a browser at quality 0.82. `index.html` points at the `.webp` files; the PNG originals remain in Git history.
+- Removed five unused `assets/clay-*.jpg` files.
+- Tests: 112 of 112 pass; one new check keeps pictures under 100 KB and flags unused ones.
+- Known gap: the rebuilt site was compared with the approved build on the live homepage (same fonts, same motion elements, no console errors); real-phone review is still the owner's.
+
 ## 2026-11-10 - Motion and type layer on the restored homepage (branch `restore-before-story`)
 
 Built from a draft the owner approved on Superdesign. Published on 2026-11-10 at the owner's instruction after a preview.

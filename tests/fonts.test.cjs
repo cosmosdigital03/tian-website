@@ -85,3 +85,16 @@ test('Each page uses the shared stacks: display for headings and interface, seri
   assert.match(motion, /--display:var\(--tian-display,/, 'Homepage');
   assert.match(motion, /--serif:var\(--tian-serif,/, 'Homepage');
 });
+
+test('Homepage pictures are small WebP files and no unused picture is shipped', () => {
+  const html = read('index.html');
+  const pictures = [...html.matchAll(/<img src="(assets\/[^"]+)"/g)].map(match => match[1]);
+  assert.equal(pictures.filter(name => name.endsWith('-refined.webp')).length, 5);
+  for (const name of new Set(pictures)) {
+    assert.ok(fs.statSync(path.join(root, name)).size < 100 * 1024, name + ' must stay under 100 KB');
+  }
+  const shipped = fs.readdirSync(path.join(root, 'assets')).filter(name => /\.(png|jpe?g|webp)$/.test(name));
+  for (const name of shipped) {
+    assert.ok(pages.some(page => read(page).includes('assets/' + name)), 'Unused picture in assets/: ' + name);
+  }
+});
